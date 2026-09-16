@@ -1,0 +1,76 @@
+{
+  "schema": "stage_vla_v7.phase2_physical_evidence.v1",
+  "validation_date": "2026-09-16",
+  "baseline_commit": "b2e14c95557fff88839856865918dcbc7efd4be2",
+  "environment": {
+    "isaac_lab_root": "E:\\work\\IsaacLab",
+    "artifact_bundle": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1",
+    "simulator_device": "cuda:0",
+    "headless": true
+  },
+  "invocation": {
+    "runner": "scripts/smoke/run_v7_vision_video_smoke.ps1",
+    "simulation_seed": 2012,
+    "layout": "config/simulation/smoke_layout_seed61081.json",
+    "use_vision": true,
+    "video": true,
+    "require_v7_chain": true,
+    "recording_strict": true
+  },
+  "result": {
+    "status": "passed",
+    "physical_tasks_passed": 1,
+    "physical_tasks_total": 1,
+    "stable_success": true,
+    "mid_episode_resets": 0,
+    "v7_chain_verified": true,
+    "skill_tokens_exercised": 8,
+    "skill_tokens_total": 8,
+    "physical_state_exact_handoffs": 7,
+    "physical_state_handoffs_total": 7,
+    "reference_skill_calls": 0,
+    "reference_recovery_calls": 0
+  },
+  "inference_rows_by_skill": {
+    "REACH": 374,
+    "GRASP": 31,
+    "LIFT": 60,
+    "TRANSPORT": 101,
+    "ALIGN": 32,
+    "DESCEND": 20,
+    "RELEASE_STABILIZE": 7,
+    "RETREAT": 103
+  },
+  "vision": {
+    "provider": "v7-compact-color-depth",
+    "service_calls": 730,
+    "invalid_frames": 0,
+    "camera": "v7_multicube_camera",
+    "resolution": [128, 128],
+    "outputs": ["rgb", "distance_to_image_plane"]
+  },
+  "video": {
+    "completed": true,
+    "camera": "v7_observer_camera",
+    "source": "observer-camera",
+    "used_for_vision": false,
+    "frames": 768,
+    "fps": 20.0,
+    "width": 640,
+    "height": 480,
+    "duration_s": 38.4,
+    "size_bytes": 10028567,
+    "sha256": "802eb56e406b250b0c28ad43150dd66e9e40ff52232bb4e9e75b3fa2e00000fb",
+    "decoder_probe": {
+      "library": "imageio",
+      "fps": 20.0,
+      "size": [640, 480],
+      "frame_shape": [480, 640, 3]
+    }
+  },
+  "source_output": {
+    "path": "outputs/phase2_vision_video_seed61081.json",
+    "sha256": "775115fc24017239f63524ae08ce4937a4e6217aaeed8f1a334d9c37537155db",
+    "note": "The full diagnostic JSON and MP4 are ignored runtime outputs; this compact record is tracked."
+  }
+}

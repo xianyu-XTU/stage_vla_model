@@ -7,7 +7,13 @@ from typing import Mapping
 
 from stage_vla_v7.interfaces import SimulationModelDescriptor
 
-from ..models import CubeModel, DepthCameraModel, FrankaModel, RGBCameraModel
+from ..models import (
+    CubeModel,
+    DepthCameraModel,
+    FrankaModel,
+    ObserverCameraModel,
+    RGBCameraModel,
+)
 from ..randomization import sample_object_positions
 
 
@@ -51,6 +57,7 @@ class StackScene:
             "depth": DepthCameraModel(),
         }
     )
+    observer_camera: ObserverCameraModel | None = None
     minimum_separation_m: float = 0.09
 
     def load(self) -> SceneManifest:
@@ -58,11 +65,14 @@ class StackScene:
             raise ValueError("stack scene requires red_cube and blue_cube")
         if "rgb" not in self.sensors or "depth" not in self.sensors:
             raise ValueError("stack scene requires RGB and depth sensors")
+        sensors = dict(self.sensors)
+        if self.observer_camera is not None:
+            sensors["observer"] = self.observer_camera
         return SceneManifest(
             self.name,
             self.robot.descriptor.identifier,
             tuple(sorted(model.descriptor.identifier for model in self.objects.values())),
-            tuple(sorted(model.descriptor.identifier for model in self.sensors.values())),
+            tuple(sorted(model.descriptor.identifier for model in sensors.values())),
             True,
             True,
         )

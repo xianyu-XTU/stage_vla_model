@@ -14,21 +14,24 @@ Validation date: 2026-09-16
 ## Automated tests
 
 ```text
-78 passed
+95 passed
 ```
 
 Coverage includes dependency-free contracts, strict import boundaries,
 Chinese/English/DSL parsing, provider registries, routing and safety, all eight
 Skill definitions, success/failure predicates, temporary TorchScript loading,
 hash mismatch rejection, simulation model/scene/environment registries, seeded
-randomization, Isaac camera/observation/action/runtime adapters, compatibility
-imports, and the complete Chinese-to-eight-Skill adapter chain.
+randomization, Isaac camera/observation/action/runtime adapters, dual-camera
+isolation, strict/best-effort recording, overlays, compatibility imports, and
+the complete Chinese-to-eight-Skill adapter chain.
 
 `python -m compileall -q src tests scripts tools` also passed. Ruff could not be
 run because it was not installed in either available Python environment.
-Standalone Python 3.11 imported all 136 `stage_vla_v7` modules without an
-Isaac launcher, confirming that simulator startup is not an import-time core
-dependency.
+Isaac Python imported all 145 `stage_vla_v7` modules without an Isaac launcher
+or simulator process. Bare Python 3.11, which lacks the optional NumPy
+recording dependency, still imports top-level `stage_vla_v7` successfully.
+This confirms that simulator startup and recording packages are not
+import-time core dependencies.
 
 ## Checkpoint compatibility
 
@@ -43,8 +46,9 @@ refactored checkpoint loader -> ActionRouter -> ActionService -> SafetyProjector
 ```
 
 All eight comparisons passed at tolerance `1e-7`; every maximum absolute error
-was exactly `0.0`. Full actions and hashes are in
-`evidence/checkpoint_compatibility.json`.
+was exactly `0.0` before and after Phase 2. Full actions and hashes are in
+`evidence/phase2_checkpoint_compatibility_baseline.json` and
+`evidence/phase2_checkpoint_compatibility_post.json`.
 
 ## Chinese CLI
 
@@ -92,8 +96,85 @@ ALIGN 32, DESCEND 20, RELEASE_STABILIZE 7, and RETREAT 102. The compact record
 is `evidence/v7_vla_smoke_refactor_seed61081.summary.json`; the full diagnostic
 JSON remains under ignored `outputs/`.
 
+After moving concrete environment construction into
+`simulation/isaac_lab/env_factory.py`, the same physical smoke passed 1/1 with
+731 V7 Vision calls, zero invalid frames, 8/8 Skills, 7/7 state-exact handoffs,
+no reference or recovery calls, and `v7_chain.verified=true`. Its full local
+output is `outputs/phase2_post_env_factory_seed61081.json`.
+
+## Vision and observer-video smoke
+
+The following real Isaac run enabled RGB-D Vision, strict observer recording,
+the full learned eight-Skill chain, the V7 audit gate, and headless rendering
+at the same time:
+
+```powershell
+scripts\smoke\run_v7_vision_video_smoke.ps1 `
+  -IsaacLabRoot E:\work\IsaacLab `
+  -ArtifactRoot E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 `
+  -Output outputs\phase2_vision_video_seed61081.json `
+  -VideoPath outputs\phase2_vision_video_seed61081.mp4
+```
+
+| Check | Result |
+|---|---:|
+| Physical task | 1/1 passed |
+| V7 chain gate | passed |
+| Prepared Skill tokens | 8/8 |
+| State-exact handoffs | 7/7 |
+| V7 Vision calls / invalid frames | 730 / 0 |
+| Reference Skills / recovery calls | 0 / 0 |
+| Observer frames | 768 |
+| Observer output | 640 x 480, 20 FPS, 38.4 s |
+| Observer used for Vision | false |
+
+Imageio reopened the MP4 and reported 20 FPS, a 640 x 480 stream, and a
+`480 x 640 x 3` decoded frame. The MP4 was 10,028,567 bytes with SHA256
+`802eb56e406b250b0c28ad43150dd66e9e40ff52232bb4e9e75b3fa2e00000fb`.
+The tracked compact record is
+`evidence/phase2_vision_video_physical.json`; full output and media stay under
+ignored `outputs/`.
+
+## Reproducible validation commands
+
+Run from the repository root in PowerShell:
+
+```powershell
+# 1. Dependency boundaries
+E:\work\IsaacLab\_isaac_sim\python.bat -m pytest tests\test_dependency_boundaries.py -q
+
+# 2. Complete unit/compatibility suite
+E:\work\IsaacLab\_isaac_sim\python.bat -m pytest tests -q
+
+# 3. Checkpoint compatibility
+E:\work\IsaacLab\_isaac_sim\python.bat `
+  tools\migration\verify_checkpoint_compatibility.py `
+  --artifact-root E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 `
+  --output evidence\phase2_checkpoint_compatibility_post.json
+
+# 4. Dependency-light Simulation tests
+E:\work\IsaacLab\_isaac_sim\python.bat -m pytest tests\simulation -q
+
+# 5. Physical RGB-D V7 chain smoke
+scripts\smoke\run_v7_smoke.ps1 `
+  -IsaacLabRoot E:\work\IsaacLab `
+  -Output outputs\v7_chain.json
+
+# 6. Physical RGB-D + Observer MP4 V7 chain smoke
+scripts\smoke\run_v7_vision_video_smoke.ps1 `
+  -IsaacLabRoot E:\work\IsaacLab `
+  -Output outputs\v7_vision_video.json `
+  -VideoPath outputs\v7_vision_video.mp4
+```
+
+`--headless` remains compatible with the installed Isaac Lab and produced the
+verified MP4, although the launcher warns that the flag is deprecated. For
+future direct evaluator commands, prefer `--viz none` when supported.
+
 ## Claim boundary
 
 This proves module wiring, legacy checkpoint equivalence, one successful
-physical episode, and the unbroken V7 audit gate. It does not claim new trained
-weights, complete visual state estimation, or a multi-seed success rate.
+physical episode with two isolated cameras, a decodable observer video, and the
+unbroken V7 audit gate. It does not claim new trained weights, complete visual
+state estimation, complete removal of V5 runtime code, or a multi-seed success
+rate.

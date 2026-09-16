@@ -71,21 +71,50 @@ hash mismatches, and non-finite actions fail closed.
 
 - `robots/franka.py`: joints, links, limits, default pose, controller support.
 - `objects/cube.py`: geometry, mass, material, collision, and ObjectProfile.
-- `sensors`: RGB and metric depth camera descriptions.
+- `sensors`: RGB, metric depth, and observer-camera descriptions.
 
 `StackScene` composes robot, objects, sensors, table, and light.
 `RedOnBlueEnvironment` owns the task environment boundary and requires an
 explicit backend. Without a backend it raises instead of pretending to run
 physics. Registries for models, scenes, and environments fail closed.
 
-`simulation/isaac_lab` owns conversions between raw camera/tensor payloads and
-the public contracts. `PipelineActionSource` converts every batch row to
+`simulation/isaac_lab` owns environment construction and conversions between
+raw camera/tensor payloads and the public contracts. `SimulationEnvironmentFactory`
+fails closed on unknown environments. `PipelineActionSource` converts every batch row to
 `RobotObservation`, calls `StageVLAPipeline.act`, and converts only the final
 validated actions back to a Torch tensor.
 
-The physical environment factory is still implemented by the retained V5
-runtime. `make_legacy_v5_known_size_grasp_env` is the explicit adapter while
-that source remains under `vendor/stage_vla_v5`; no silent fallback exists.
+The concrete environment factory now lives in
+`simulation/isaac_lab/env_factory.py`. The former V5 factory is a compatibility
+re-export. The factory still lazily imports retained V5 gripper, contact,
+state-reader, physical-profile, and vector-control components, so runtime
+migration is explicitly PARTIAL rather than complete.
+
+## Camera and recording flow
+
+```text
+Isaac StackScene
+  +-- Vision Camera (128 x 128 RGB-D)
+  |     -> IsaacCameraAdapter -> VisionService -> SceneState
+  +-- Observer Camera (640 x 480 RGB)
+        -> IsaacCameraAdapter -> FrameCapture -> overlay -> VideoRecorder -> MP4
+```
+
+Camera IDs and roles are validated as unique. `CameraBindings.vision` is the
+only handle passed into the visual observation path; the observer handle is
+read only by recording code. `VideoRecorder` streams frames to the encoder and
+does not retain the whole episode in memory. Strict mode raises on capture or
+encoding failure. Best-effort mode records the error, closes the encoder,
+warns, and leaves the control loop unchanged.
+
+## Evaluation structure
+
+`tools/eval_v7_multicube_chain.py` only establishes the repository import path
+and invokes the evaluator. `tools/evaluation/episode_runner.py` owns the
+whole-episode experiment flow, while `result_writer.py` owns JSON persistence.
+Environment construction, layout parsing/randomization, camera adaptation,
+overlay rendering, and MP4 encoding are owned by their Simulation modules.
+Action terminal semantics remain in `action/evaluation`.
 
 ## Audit chain
 

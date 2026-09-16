@@ -8,7 +8,7 @@ from stage_vla_v7.interfaces import SimulationModelDescriptor
 
 from .objects import CubeModel
 from .robots import FrankaModel
-from .sensors import DepthCameraModel, RGBCameraModel
+from .sensors import DepthCameraModel, ObserverCameraModel, RGBCameraModel
 
 
 ModelT = TypeVar("ModelT")
@@ -75,4 +75,5 @@ def default_model_registry() -> SimulationModelRegistry:
     registry.register_object("cube", CubeModel())
     registry.register_sensor("rgb", RGBCameraModel())
     registry.register_sensor("depth", DepthCameraModel())
+    registry.register_sensor("observer", ObserverCameraModel())
     return registry

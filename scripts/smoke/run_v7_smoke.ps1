@@ -2,7 +2,10 @@ param(
     [string]$IsaacLabRoot = "E:\work\IsaacLab",
     [string]$ArtifactRoot = "E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1",
     [string]$Calibration = "E:\stage_vla_v5\outputs\vision_rgbd_mapping_calibration_train_20260910.json",
-    [string]$Output = ""
+    [string]$Output = "",
+    [switch]$Video,
+    [string]$VideoPath = "",
+    [switch]$Headless
 )
 
 $ErrorActionPreference = "Stop"
@@ -56,6 +59,19 @@ $arguments = @(
     "--release_translation_limit_m", "0.003",
     "--retreat_translation_limit_m", "0.005"
 )
+if ($Video) {
+    if (-not $VideoPath) {
+        $VideoPath = [IO.Path]::ChangeExtension($Output, ".mp4")
+    }
+    $arguments += @(
+        "--video", "--video_path", $VideoPath,
+        "--observer_camera_config", (Join-Path $repoRoot "config\simulation\observer_camera.json"),
+        "--recording_strict"
+    )
+}
+if ($Headless) {
+    $arguments += "--headless"
+}
 
 $previousEncodedCommand = $env:STAGE_VLA_COMMAND_UTF8_BASE64
 try {
@@ -81,5 +97,15 @@ if ($smokeExitCode -ne 0) {
 $result = Get-Content -LiteralPath $Output -Raw -Encoding UTF8 | ConvertFrom-Json
 if ($result.status -ne "passed" -or -not $result.v7_chain.verified) {
     throw "V7 output did not pass the physical and chain gates: $Output"
+}
+if ($Video) {
+    if (
+        -not $result.video.completed `
+        -or $result.video.source -ne "observer-camera" `
+        -or $result.video.used_for_vision `
+        -or -not (Test-Path -LiteralPath $result.video.path -PathType Leaf)
+    ) {
+        throw "V7 Vision + Video recording contract failed: $Output"
+    }
 }
 Write-Output "V7 VLA smoke passed: $Output"

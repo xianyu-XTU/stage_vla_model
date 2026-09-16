@@ -1,0 +1,11 @@
+{
+  "schema": "stage_vla_v7.observer_camera.v1",
+  "name": "v7_observer_camera",
+  "position_m": [1.0, 0.0, 0.4],
+  "rotation_wxyz": [-0.61237, -0.61237, 0.35355, 0.35355],
+  "focal_length_mm": 24.0,
+  "horizontal_aperture_mm": 20.955,
+  "width": 640,
+  "height": 480,
+  "fps": 20.0
+}

@@ -1,4 +1,4 @@
-"""Lifecycle wrapper and explicit adapter for the retained V5 Isaac runtime."""
+"""Lifecycle wrapper and compatibility entry for the V7 Isaac runtime."""
 
 from __future__ import annotations
 
@@ -62,12 +62,7 @@ class CallbackIsaacLabRuntime:
 
 
 def make_legacy_v5_known_size_grasp_env(**kwargs: Any) -> Any:
-    """Create the retained V5 physical runtime through the V7 Simulation boundary."""
-    try:
-        from tools.stageppo_known_size_grasp_env import make_known_size_grasp_env
-    except ImportError as exc:
-        raise RuntimeError(
-            "the retained stage_vla_v5 runtime must be on sys.path before creating "
-            "the Isaac Lab environment"
-        ) from exc
-    return make_known_size_grasp_env(**kwargs)
+    """Compatibility name for the now V7-owned environment factory."""
+    from .env_factory import create_environment
+
+    return create_environment("red_on_blue", **kwargs)

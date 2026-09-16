@@ -1,0 +1,185 @@
+{
+  "schema": "stage_vla_v7.checkpoint_compatibility.v1",
+  "artifact_bundle": "v5_generalized_cube_bc_v1",
+  "comparison": "direct_v5_torchscript_plus_frozen_safety_vs_refactored_action_service",
+  "tolerance": 1e-07,
+  "all_compatible": true,
+  "skills": {
+    "REACH": {
+      "checkpoint": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\reach\\policy.ts",
+      "sha256": "582CCC25F4FB6468547029F68DF7A8B4B11737E3803DBDF6E88248B24328C768",
+      "observation_dim": 52,
+      "action_dim": 5,
+      "legacy_projected_action": [
+        0.999988853931427,
+        1.0,
+        -0.9997508525848389,
+        -0.05254910886287689,
+        0.970313310623169
+      ],
+      "refactored_action": [
+        0.999988853931427,
+        1.0,
+        -0.9997508525848389,
+        -0.05254910886287689,
+        0.970313310623169
+      ],
+      "max_abs_error": 0.0,
+      "compatible": true
+    },
+    "GRASP": {
+      "checkpoint": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\grasp\\policy.ts",
+      "sha256": "F11179EE4F24B100DEDA6D1E621139977FA521D902DEB63A9D8468A6D067280F",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "legacy_projected_action": [
+        -0.005655653774738312,
+        -0.0129934623837471,
+        -0.2023504376411438,
+        -0.12766996026039124,
+        -0.27650320529937744
+      ],
+      "refactored_action": [
+        -0.005655653774738312,
+        -0.0129934623837471,
+        -0.2023504376411438,
+        -0.12766996026039124,
+        -0.27650320529937744
+      ],
+      "max_abs_error": 0.0,
+      "compatible": true
+    },
+    "LIFT": {
+      "checkpoint": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\lift\\policy.ts",
+      "sha256": "568ED95D434076677E9B46E10573D32426F8250566DDE23936D231B1FD52A165",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "legacy_projected_action": [
+        -0.010163893923163414,
+        0.03792531415820122,
+        0.2484140843153,
+        0.1968657672405243,
+        -0.5072751641273499
+      ],
+      "refactored_action": [
+        -0.010163893923163414,
+        0.03792531415820122,
+        0.2484140843153,
+        0.1968657672405243,
+        -0.5072751641273499
+      ],
+      "max_abs_error": 0.0,
+      "compatible": true
+    },
+    "TRANSPORT": {
+      "checkpoint": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\transport\\policy.ts",
+      "sha256": "099E84DD6766955CBFC1CCE9D967733DC3D861AFAEF3890BA96C6B0F279FDF86",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "legacy_projected_action": [
+        1.0,
+        1.0,
+        0.040792129933834076,
+        0.04194607585668564,
+        -0.5737074613571167
+      ],
+      "refactored_action": [
+        1.0,
+        1.0,
+        0.040792129933834076,
+        0.04194607585668564,
+        -0.5737074613571167
+      ],
+      "max_abs_error": 0.0,
+      "compatible": true
+    },
+    "ALIGN": {
+      "checkpoint": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\align\\policy.ts",
+      "sha256": "E6868719E82B641E6A993EC40564297A4AC29D5113F018F43BFE189C499262D3",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "legacy_projected_action": [
+        0.4596835672855377,
+        1.0,
+        1.0,
+        0.0538928247988224,
+        -0.9697798490524292
+      ],
+      "refactored_action": [
+        0.4596835672855377,
+        1.0,
+        1.0,
+        0.0538928247988224,
+        -0.9697798490524292
+      ],
+      "max_abs_error": 0.0,
+      "compatible": true
+    },
+    "DESCEND": {
+      "checkpoint": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\descend\\policy.ts",
+      "sha256": "A561E5D4AF62ECFD554F181C3A947FDE99DB41148C7168C23F72FFC43A6C3326",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "legacy_projected_action": [
+        0.9936162233352661,
+        0.9977192878723145,
+        1.0,
+        0.0,
+        -1.0
+      ],
+      "refactored_action": [
+        0.9936162233352661,
+        0.9977192878723145,
+        1.0,
+        0.0,
+        -1.0
+      ],
+      "max_abs_error": 0.0,
+      "compatible": true
+    },
+    "RELEASE_STABILIZE": {
+      "checkpoint": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\release_stabilize\\policy.ts",
+      "sha256": "8808F91902F23FE6F32F2E1C3F56A9715503BE978BFC05DB44368FAD37C5DC00",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "legacy_projected_action": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.4381010830402374
+      ],
+      "refactored_action": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.4381010830402374
+      ],
+      "max_abs_error": 0.0,
+      "compatible": true
+    },
+    "RETREAT": {
+      "checkpoint": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\retreat\\policy.ts",
+      "sha256": "1F61EB0D7DC3CA479CA13AFF225F8026DE4C53969119B4A3E0846D2768452A3C",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "legacy_projected_action": [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.0
+      ],
+      "refactored_action": [
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.0
+      ],
+      "max_abs_error": 0.0,
+      "compatible": true
+    }
+  }
+}

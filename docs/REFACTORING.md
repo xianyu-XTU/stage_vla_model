@@ -64,7 +64,7 @@ tools/
 vendor/stage_vla_v5/  (179 audited Python modules; unchanged)
 ```
 
-## Post-refactor tree
+## Phase-1 post-refactor tree
 
 ```text
 config/
@@ -163,16 +163,21 @@ omitted from the tree only to keep the ownership structure readable.
 | V5 success call sites | `action/evaluation/*` | vectorized adapter preserves V5 tensors |
 | `orchestration/pipeline.py` internals | `prepared_task.py`, `execution_context.py`, `audit.py`, `task_scheduler.py` | public pipeline API retained |
 | `integrations/isaaclab.py` | `simulation/isaac_lab/*` | old integration path re-exports bridge |
-| evaluator V5 environment import | `simulation.isaac_lab.runtime` adapter | retained V5 factory called explicitly |
+| evaluator V5 environment import | `simulation/isaac_lab/env_factory.py` | old V5 factory path re-exports the V7 owner |
+| evaluator layout helpers | `simulation/randomization/object_pose.py` | schemas and seeded behavior retained |
+| evaluator MP4/overlay logic | `simulation/recording/*` | streaming recorder with strict/best-effort modes |
+| single shared camera branch | distinct Vision and Observer `CameraSpec` values | Observer is excluded from Vision input |
+| monolithic evaluator entry | `tools/evaluation/{episode_runner.py,result_writer.py}` | original CLI path forwards to the package |
 | mixed component JSON | split `config/{vision,language,action,simulation,tasks}` | example aggregate retained |
 | root smoke implementation | `scripts/smoke/run_v7_smoke.ps1` | root script forwards |
 
 ## Deletions
 
 No source file or vendored file was deleted. Existing import paths were retained
-as wrappers because downstream users and the physical evaluator may still rely
-on them. No artifact was copied into the repository and no checkpoint was
-rewritten.
+as wrappers because downstream users may still rely on them. The former V5
+environment-factory module is now a compatibility re-export of the V7-owned
+implementation. No artifact was copied into the repository and no checkpoint
+was rewritten.
 
 ## Compatibility result
 
@@ -181,4 +186,129 @@ V5-trained policies against their locked SHA256 values. For a deterministic
 input per declared observation dimension, direct TorchScript inference plus the
 frozen safety projection matched refactored `ActionService` output with maximum
 absolute error `0.0` for every Skill. See
-`evidence/checkpoint_compatibility.json`.
+`evidence/phase2_checkpoint_compatibility_post.json`.
+
+## Phase-2 result
+
+Phase 2 started from commit `b2e14c95557fff88839856865918dcbc7efd4be2`.
+The concrete Isaac environment factory, pure layout handling, camera
+declarations, and all video responsibilities moved to `simulation`. The old
+1,929-line `tools/eval_v7_multicube_chain.py` is now a 17-line compatibility
+entry. Whole-episode orchestration and JSON persistence live under
+`tools/evaluation`; Action success semantics remain under `action/evaluation`.
+
+The successful dual-camera run proves the two live paths are independent:
+
+```text
+Vision Camera RGB-D -> VisionService -> SceneState -> StageVLAPipeline
+Observer Camera RGB -> FrameCapture -> VideoRecorder -> MP4
+```
+
+Migration is intentionally incomplete. The new factory and episode runner
+still use 19 unique direct V5 module paths for gripper/contact/state/vector
+runtime behavior and frozen helpers. Those dependencies are explicit and
+listed in `docs/VENDOR_CLASSIFICATION.md`.
+
+## Phase-2 complete scoped tree
+
+```text
+src/stage_vla_v7/simulation/
+  __init__.py
+  config.py
+  environments/
+    __init__.py
+    base.py
+    red_on_blue.py
+    registry.py
+  isaac_lab/
+    __init__.py
+    action_adapter.py
+    adapter.py
+    camera_adapter.py
+    env_factory.py
+    observation_adapter.py
+    pipeline_action_source.py
+    runtime.py
+  models/
+    __init__.py
+    registry.py
+    assets/
+      __init__.py
+      manifests.py
+    objects/
+      __init__.py
+      cube.py
+    robots/
+      __init__.py
+      franka.py
+    sensors/
+      __init__.py
+      depth_camera.py
+      observer_camera.py
+      rgb_camera.py
+  physics/
+    __init__.py
+    contacts.py
+    limits.py
+    materials.py
+  randomization/
+    __init__.py
+    object_pose.py
+    seeds.py
+  recording/
+    __init__.py
+    config.py
+    frame_capture.py
+    overlays.py
+    video_recorder.py
+  scenes/
+    __init__.py
+    base.py
+    registry.py
+    stack_scene.py
+
+tools/
+  eval_v7_multicube_chain.py
+  summarize_stack_benchmark.py
+  evaluation/
+    __init__.py
+    episode_runner.py
+    result_writer.py
+  migration/
+    verify_checkpoint_compatibility.py
+
+scripts/
+  run_v7_smoke.ps1
+  evaluate/
+    run_v7_multicube_chain.ps1
+  simulation/
+    run_red_on_blue.ps1
+  smoke/
+    run_v7_smoke.ps1
+    run_v7_vision_video_smoke.ps1
+  train/
+    train_skill_bc.py
+
+tests/
+  conftest.py
+  test_action.py
+  test_compatibility_surface.py
+  test_config_manifests.py
+  test_contracts.py
+  test_dependency_boundaries.py
+  test_isaaclab_bridge.py
+  test_language.py
+  test_pipeline.py
+  test_registry.py
+  test_vision.py
+  action/
+    test_skill_registry.py
+    test_torchscript_network.py
+  integration/
+    test_chinese_isaac_chain.py
+  simulation/
+    test_dual_camera.py
+    test_isaac_lab_adapters.py
+    test_models_and_scene.py
+    test_recording.py
+```

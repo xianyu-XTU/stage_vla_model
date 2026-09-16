@@ -5,9 +5,26 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 
-from stage_vla_v7.action import ActionRouter, ActionService, SafetyProjector, build_v5_cube_bundle
-from stage_vla_v7.interfaces import ActionRequest, ObjectProfile, RobotAction, SKILL_SEQUENCE
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+SOURCE_ROOT = REPOSITORY_ROOT / "src"
+if str(SOURCE_ROOT) not in sys.path:
+    sys.path.insert(0, str(SOURCE_ROOT))
+
+from stage_vla_v7.action import (  # noqa: E402
+    ActionRouter,
+    ActionService,
+    SafetyProjector,
+    build_v5_cube_bundle,
+)
+from stage_vla_v7.interfaces import (  # noqa: E402
+    ActionRequest,
+    ObjectProfile,
+    RobotAction,
+    SKILL_SEQUENCE,
+)
 
 
 def main() -> None:
