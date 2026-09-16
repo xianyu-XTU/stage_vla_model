@@ -11,7 +11,7 @@ from .trace import PhysicalTraceCollector
 
 @dataclass(frozen=True)
 class ExecutionHelpers:
-    """Frozen legacy math helpers used by the compatibility execution bridge."""
+    """Frozen execution math helpers supplied by the V7 runtime."""
 
     skill_success: Callable[..., Any]
     jaw_leveling_axis_angle: Callable[..., Any]
@@ -162,7 +162,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                 )
             yaw_error = parallel_jaw_yaw_error(
                 reach_state["red_quat"],
-                env.physical_batch.object_size_m,
+                env.object_size_m,
                 reach_state["left_tip"],
                 reach_state["right_tip"],
             )
@@ -179,7 +179,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
             if grasp_profile.geometry == "box":
                 yaw_error = parallel_jaw_yaw_error(
                     reach_state["red_quat"],
-                    env.physical_batch.object_size_m,
+                    env.object_size_m,
                     reach_state["left_tip"],
                     reach_state["right_tip"],
                 )
@@ -285,7 +285,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
             tip_error = tip_mid - reach_state["grasp_target"]
             attempted_steps = reach_steps_used.clone()
             attempted_steps[~reached] = args.reach_steps + args.reach_recovery_steps
-            return env._obs(), {
+            return env.observe(), {
                 "passed": False,
                 "env_success": (reached & active_mask).detach().cpu().tolist(),
                 "steps": attempted_steps.detach().cpu().tolist(),
@@ -355,7 +355,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
             reach_exit["parallel_jaw_yaw_error_rad"] = (
                 parallel_jaw_yaw_error(
                     reach_state["red_quat"],
-                    env.physical_batch.object_size_m,
+                    env.object_size_m,
                     reach_state["left_tip"],
                     reach_state["right_tip"],
                 ).detach().cpu().tolist()
@@ -377,11 +377,9 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                 "distance_m": args.pregrasp_contact_descent_m,
                 "simulator_reset": False,
             })
-        env.measured = env._measure()
-        env.entry_red_z[:] = env.measured["red"][:, 2]
-        env.prev_force[:] = env.measured["force"]
+        env.synchronize_after_external_step()
         inject_visual_roles(object_asset, support_asset)
-        return env._obs(), {
+        return env.observe(), {
             "passed": bool(final_reach_success.any()),
             "env_success": final_reach_success.detach().cpu().tolist(),
             "steps": reach_steps_used.detach().cpu().tolist(),
@@ -401,12 +399,13 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
         active_mask = torch.as_tensor(
             active_mask, dtype=torch.bool, device=env.device
         )
-        env.finished[~active_mask] = True
         for step in range(1, horizon + 1):
             inject_visual_roles(object_asset, support_asset)
-            obs = env._obs()
-            reference_state = dict(env.measured)
-            reference_state["held"] = env.measured["physical"]
+            obs = env.observe()
+            physical_state = env.physical_state
+            status = env.status
+            reference_state = dict(physical_state)
+            reference_state["held"] = physical_state["physical"]
             reference_state["stack_height"] = torch.full(
                 (args.num_envs,), args.descend_height_m, device=env.device
             )
@@ -414,7 +413,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                 skill,
                 obs["policy"],
                 reference_state=reference_state,
-                finished=env.finished,
+                finished=status.finished,
                 translation_limit_m=skill_translation_limits.get(skill, 0.005),
                 yaw_limit_rad=0.02,
                 include_reference=skill in args.dagger_label_skills,
@@ -422,7 +421,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
             action = output.command
             if skill != "REACH":
                 action = hold_finished_skill_action(
-                    skill, action, env.finished, env.prev_unit
+                    skill, action, status.finished, status.previous_action
                 )
             active = output.active
             if output.source == "reference":
@@ -448,67 +447,58 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                 checkpoint_action=output.command,
                 submitted_action=action,
             )
+            physical_state = env.physical_state
+            status = env.status
+            gripper = env.gripper_diagnostics
             for i in (record_done & active_mask).nonzero(as_tuple=False).flatten().tolist():
-                rel = env.measured["red"][i] - env.measured["blue"][i]
+                rel = physical_state["red"][i] - physical_state["blue"][i]
                 rows[i] = {
                     "env": i, "steps": step,
-                    "success": bool(env.last_success[i]),
-                    "failure": bool(env.last_failure[i]),
-                    "timeout": bool(env.last_timeout[i]),
-                    "physical_grasp": bool(env.measured["physical"][i]),
+                    "success": bool(status.success[i]),
+                    "failure": bool(status.failure[i]),
+                    "timeout": bool(status.timeout[i]),
+                    "physical_grasp": bool(physical_state["physical"][i]),
                     "pressure_ok": bool(pressure_tracking_ok(
-                        env.measured["force"][i].unsqueeze(0),
-                        env.gripper_action.target_force_n[i].unsqueeze(0), cfg=size
+                        physical_state["force"][i].unsqueeze(0),
+                        gripper.target_force_n[i].unsqueeze(0), cfg=size
                     )[0]),
-                    "force_n": env.measured["force"][i].detach().cpu().tolist(),
-                    "target_force_n": float(env.gripper_action.target_force_n[i]),
-                    "gripper_joint_m": env.measured["grip"][i].detach().cpu().tolist(),
-                    "gripper_target_m": env.gripper_action.processed_actions[i].detach().cpu().tolist(),
-                    "fingertip_gap_m": float(env.measured["fingertip_gap_m"][i]),
-                    "radial_error_m": float(env.measured["radial_error_m"][i]),
-                    "left_height_error_m": float(env.measured["left_height_error_m"][i]),
-                    "right_height_error_m": float(env.measured["right_height_error_m"][i]),
+                    "force_n": physical_state["force"][i].detach().cpu().tolist(),
+                    "target_force_n": float(gripper.target_force_n[i]),
+                    "gripper_joint_m": physical_state["grip"][i].detach().cpu().tolist(),
+                    "gripper_target_m": gripper.joint_target_m[i].detach().cpu().tolist(),
+                    "fingertip_gap_m": float(physical_state["fingertip_gap_m"][i]),
+                    "radial_error_m": float(physical_state["radial_error_m"][i]),
+                    "left_height_error_m": float(physical_state["left_height_error_m"][i]),
+                    "right_height_error_m": float(physical_state["right_height_error_m"][i]),
                     "stack_xy_m": float(rel[:2].norm()),
                     "stack_relative_height_m": float(rel[2]),
-                    "lift_target_height_m": float(env.lift_target_height_m[i]),
-                    "stability_speed_mps": float(env.measured["stability_speed"][i]),
-                    "instantaneous_speed_mps": float(env.measured["speed"][i]),
+                    "lift_target_height_m": float(status.lift_target_height_m[i]),
+                    "stability_speed_mps": float(physical_state["stability_speed"][i]),
+                    "instantaneous_speed_mps": float(physical_state["speed"][i]),
                     "angular_speed_radps": float(
-                        env.measured["stability_angular_speed"][i]
+                        physical_state["stability_angular_speed"][i]
                     ),
                     "instantaneous_angular_speed_radps": float(
-                        env.measured["instantaneous_angular_speed"][i]
+                        physical_state["instantaneous_angular_speed"][i]
                     ),
                     "control_angular_speed_radps": float(
-                        env.measured["control_angular_speed"][i]
+                        physical_state["control_angular_speed"][i]
                     ),
-                    "stable_steps": int(env.stable_count[i]),
+                    "stable_steps": int(status.stable_count[i]),
                     "first_action": first_action[i].tolist(),
                     "terminal_action": action[i].detach().cpu().tolist(),
                 }
-            if bool(env.finished[active_mask].all()):
+            if bool(status.finished[active_mask].all()):
                 break
         return obs, rows
 
     def handoff(obs, skill: str, horizon: int, stable_steps: int, active_mask):
-        before = env._measure()
-        env.skill = skill
-        env.mark_continuous_handoff()
-        env.arm_locked = False
-        env.episode_steps = int(horizon)
-        env.max_episode_length = int(horizon)
-        env.stable_steps = int(stable_steps)
-        env.steps.zero_(); env.stable_count.zero_(); env.finished.zero_()
-        env.last_success.zero_(); env.last_failure.zero_(); env.last_timeout.zero_()
-        env.finished[~active_mask] = True
-        after = env._measure()
-        exact = all(torch.equal(before[key], after[key]) for key in before)
-        if not exact:
-            raise RuntimeError(f"physical state changed during handoff to {skill}")
-        env.measured = after
-        if skill == "LIFT":
-            env.update_lift_target_from_support()
-        return env._obs(), exact
+        return env.configure_skill(
+            skill,
+            episode_steps=horizon,
+            stable_steps=stable_steps,
+            active_mask=active_mask,
+        )
 
     def settle(obs, steps: int, label: str, relation_index: int):
         if not steps:
@@ -522,7 +512,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
             capture_video_frame(label, step)
             trace_collector.append(
                 relation_index=relation_index,
-                skill=f"{env.skill}_SETTLE",
+                skill=f"{env.current_skill}_SETTLE",
                 step=step,
                 submitted_action=action,
             )

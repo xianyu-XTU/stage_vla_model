@@ -5,6 +5,7 @@ from .instruction import StackRelation
 from .model_descriptor import ModelDescriptor
 from .object_profile import ObjectProfile
 from .observation import RobotObservation
+from .physical_state import PhysicalState
 from .scene import ObjectDetection, SceneState
 from .simulation import (
     SimulationAction,
@@ -19,6 +20,7 @@ __all__ = [
     "ModelDescriptor",
     "ObjectDetection",
     "ObjectProfile",
+    "PhysicalState",
     "RobotAction",
     "RobotObservation",
     "SKILL_SEQUENCE",

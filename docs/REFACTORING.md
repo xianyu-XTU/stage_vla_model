@@ -160,7 +160,7 @@ omitted from the tree only to keep the ownership structure readable.
 | `action/adapters/v5.py` | `action/network/v5_factory.py` | wrapper retained |
 | enum-only Skill handling | `action/actions/*.py` and `action/action_list.py` | frozen enum/order retained |
 | colocated scheduler | `action/scheduler.py` plus orchestration facade | old imports retained |
-| V5 success call sites | `action/evaluation/*` | vectorized adapter preserves V5 tensors |
+| V5 success call sites | `action/evaluation/*` | native vectorized implementation; V5 adapter retained for regression only |
 | `orchestration/pipeline.py` internals | `prepared_task.py`, `execution_context.py`, `audit.py`, `task_scheduler.py` | public pipeline API retained |
 | `integrations/isaaclab.py` | `simulation/isaac_lab/*` | old integration path re-exports bridge |
 | evaluator V5 environment import | `simulation/isaac_lab/env_factory.py` | old V5 factory path re-exports the V7 owner |
@@ -206,10 +206,52 @@ Vision Camera RGB-D -> VisionService -> SceneState -> StageVLAPipeline
 Observer Camera RGB -> FrameCapture -> VideoRecorder -> MP4
 ```
 
-Migration is intentionally incomplete. The new factory and episode runner
-still use 19 unique direct V5 module paths for gripper/contact/state/vector
-runtime behavior and frozen helpers. Those dependencies are explicit and
-listed in `docs/VENDOR_CLASSIFICATION.md`.
+At the Phase-2 cutoff migration was intentionally incomplete. The new factory
+and episode runner still used 19 unique direct V5 module paths for
+gripper/contact/state/vector runtime behavior and frozen helpers. That
+historical inventory is superseded by the Phase-3 result below.
+
+## Phase-3 result
+
+Phase 3 starts from the Phase-2 state described above and closes its physical
+runtime boundary without changing the eight Skills, 5D action ABI, observation
+ordering, thresholds, timing, success predicates, checkpoints, or cube policy
+domain.
+
+Each dependency cluster followed the same sequence: source audit, failing
+parity/boundary test, native V7 implementation, runtime switch, full tests, and
+strict Vision + Video physical smoke. The resulting ownership is:
+
+```text
+V7 VisionService + native RGB-D detector
+  -> SceneState
+V7 LanguageService
+  -> TaskPlan
+SceneState + TaskPlan
+  -> StageVLAPipeline -> ActionService -> 8 TorchScript policies
+  -> RobotAction[5] -> V7 Isaac adapters
+  -> KnownSizeGraspEnvironment -> Isaac Lab -> Franka
+```
+
+Native V7 modules now own success evaluation, action output/reference logic,
+camera reads/calibration/detection, `PhysicalState`, 52-D and 55-D observations,
+the known-size environment, state sampling, gripper control, contacts, fixed
+poses, physical/object profiles, fixed-tilt math and action setup, snapshot
+expansion, REACH sampling/actions, grasp/control/safety/reward helpers, motion
+configuration, and demonstration/DAgger buffers.
+
+The last evaluator coupling was removed through the public environment API:
+`observe`, `configure_evaluation`, `configure_skill`,
+`synchronize_after_external_step`, typed physical state, terminal status,
+gripper diagnostics, object size, current Skill, and stability-source access.
+Static tests now reject private environment calls and direct protected-state
+mutation from `tools/evaluation`.
+
+Final Phase-3 evidence is 270 passing tests, 8/8 checkpoint compatibility with
+maximum error `0.0`, zero formal V5 runtime imports, and a strict seed-61081
+physical run with 8/8 Skills, 7/7 exact handoffs, 730/730 valid Vision calls,
+zero oracle fallback, and a fully decoded 768-frame Observer MP4. The one V5
+source import that remains is a lazy `LEGACY_ONLY` regression adapter.
 
 ## Phase-2 complete scoped tree
 

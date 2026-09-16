@@ -130,7 +130,8 @@ and recording behavior, while Action continues to own success predicates.
 - `TRAINING.md`: independent BC and retained V5 training adapters.
 - `SIMULATION.md`: supported backend, models, scene, and extension process.
 - `docs/REFACTORING.md`: before/after trees and migration table.
-- `docs/VENDOR_CLASSIFICATION.md`: conservative V5 KEEP/MIGRATE/ADAPT/DELETE audit.
+- `docs/VENDOR_CLASSIFICATION.md`: retained vendor roles and no-delete policy.
+- `docs/VENDOR_MIGRATION_PHASE3.md`: final V5 runtime migration inventory.
 - `docs/VALIDATION.md`: test, checkpoint, CLI, and physical evidence.
 - `docs/PHASE2_REFACTOR_AUDIT.md`: source-derived Phase-2 dependency audit.
 

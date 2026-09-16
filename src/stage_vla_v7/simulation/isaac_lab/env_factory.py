@@ -1,11 +1,23 @@
-"""V7-owned Isaac Lab environment factory with explicit legacy adapters."""
+"""V7-owned Isaac Lab environment factory for the physical cube runtime."""
 
 from __future__ import annotations
 
 from copy import deepcopy
 from collections.abc import Mapping
 
-from ..config import CameraSpec, validate_camera_specs
+from ..config import CameraSpec, KnownSizeGraspConfig, validate_camera_specs
+from ..physics import PhysicalObjectBatch
+from .contact_sensors import install_finger_net_contact_sensors
+from .fixed_object_pose import set_fixed_asset_poses, set_fixed_pair_pose
+from .gripper_action import KnownSizeGraspAction, KnownSizeGraspActionCfg
+from .physical_profiles import (
+    ISAAC_BLOCK_COLLISION_SIZE_M,
+    read_rigid_body_scales,
+    set_rigid_body_mass_profile,
+    set_rigid_body_scales,
+    verify_rigid_body_mass_profile,
+)
+from .state_reader import to_torch
 
 
 class SimulationEnvironmentFactory:
@@ -65,12 +77,6 @@ def make_known_size_grasp_env(
     import torch
     import isaaclab_tasks  # noqa: F401
     from isaaclab_tasks.utils import parse_env_cfg
-    from stage_vla.envs import install_finger_net_contact_sensors
-    from stage_vla.envs.known_size_grasp_action import KnownSizeGraspAction, KnownSizeGraspActionCfg
-    from stage_vla.envs.state_readers import to_torch
-
-    from stage_vla.rl.known_size_grasp import KnownSizeGraspConfig
-    from stage_vla.rl.object_physics import PhysicalObjectBatch
 
     if not isinstance(known_size, KnownSizeGraspConfig):
         raise TypeError("known_size must be KnownSizeGraspConfig")
@@ -133,7 +139,7 @@ def make_known_size_grasp_env(
     cfg = parse_env_cfg("Isaac-Stack-Cube-Franka-IK-Rel-v0", device=device, num_envs=num_envs)
     cfg.seed = seed
     if fixed_tilt:
-        from stage_vla.envs.fixed_tilt_ik import (
+        from .fixed_tilt_ik import (
             FixedTiltDifferentialInverseKinematicsAction,
         )
 
@@ -142,10 +148,6 @@ def make_known_size_grasp_env(
         )
     if physical_batch is not None:
         from isaaclab.managers import EventTermCfg as EventTerm, SceneEntityCfg
-        from stage_vla.envs.physical_profiles import (
-            ISAAC_BLOCK_COLLISION_SIZE_M,
-            set_rigid_body_scales,
-        )
 
         cfg.scene.replicate_physics = False
         object_base_size = (
@@ -262,8 +264,6 @@ def make_known_size_grasp_env(
         # Keep the upstream reset sampler (including a randomized cube_3),
         # then apply the requested pair as the final reset event.
         from isaaclab.managers import EventTermCfg as EventTerm
-        from stage_vla.envs.fixed_object_pose import set_fixed_pair_pose
-
         cfg.events.fixed_pair_pose = EventTerm(
             func=set_fixed_pair_pose,
             mode="reset",
@@ -274,8 +274,6 @@ def make_known_size_grasp_env(
         )
     elif fixed_asset_xyz is not None:
         from isaaclab.managers import EventTermCfg as EventTerm
-        from stage_vla.envs.fixed_object_pose import set_fixed_asset_poses
-
         cfg.events.fixed_asset_poses = EventTerm(
             func=set_fixed_asset_poses,
             mode="reset",
@@ -357,12 +355,6 @@ def make_known_size_grasp_env(
     arm_term = raw.unwrapped.action_manager.get_term("arm_action")
     term = raw.unwrapped.action_manager.get_term("gripper_action")
     if physical_batch is not None:
-        from stage_vla.envs.physical_profiles import (
-            read_rigid_body_scales,
-            set_rigid_body_mass_profile,
-            verify_rigid_body_mass_profile,
-        )
-
         expected_object_scales = object_scales.cpu()
         expected_support_scales = support_scales.cpu()
         actual_object_scales = read_rigid_body_scales(raw.unwrapped, "cube_2")
@@ -422,8 +414,6 @@ def install_known_size_gripper_action(raw, known_size, effort_limit: float = 40.
     the action-manager ordering and one-dimensional gripper interface, so the
     v5 pressure-feedback policy can take over without resetting the episode.
     """
-    from stage_vla.envs.known_size_grasp_action import KnownSizeGraspAction, KnownSizeGraspActionCfg
-
     cfg = KnownSizeGraspActionCfg(
         asset_name="robot", joint_names=["panda_finger.*"],
         width_m=known_size.width_m, depth_m=known_size.depth_m,

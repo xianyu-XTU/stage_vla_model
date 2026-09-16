@@ -1,0 +1,63 @@
+{
+  "schema": "stage_vla_v7.phase3_runtime_migration.v1",
+  "validated_at": "2026-09-16",
+  "status": "passed",
+  "baseline_commit": "947d27aab174067c8ed6e2fa38a0131226e19338",
+  "runtime_dependency_audit": {
+    "phase2_direct_v5_modules": 19,
+    "final_formal_runtime_v5_imports": 0,
+    "legacy_only_lazy_imports": 1,
+    "evaluator_private_environment_calls": 0,
+    "evaluator_protected_state_mutations": 0
+  },
+  "tests": {
+    "passed": 270,
+    "compileall": true
+  },
+  "checkpoints": {
+    "compatible": 8,
+    "total": 8,
+    "action_dim": 5,
+    "max_abs_error": 0.0,
+    "evidence": "evidence/phase3_checkpoint_compatibility.json"
+  },
+  "physical_chain": {
+    "successes": 1,
+    "episodes": 1,
+    "skills_exercised": 8,
+    "skills_total": 8,
+    "exact_handoffs": 7,
+    "handoffs_total": 7,
+    "mid_episode_resets": 0,
+    "v7_chain_verified": true,
+    "reference_skill_calls": 0,
+    "recovery_calls": 0
+  },
+  "vision": {
+    "strict": true,
+    "service_calls": 730,
+    "invalid_frames": 0,
+    "oracle_fallback_count": 0
+  },
+  "inference_rows_by_skill": {
+    "REACH": 374,
+    "GRASP": 31,
+    "LIFT": 60,
+    "TRANSPORT": 101,
+    "ALIGN": 32,
+    "DESCEND": 20,
+    "RELEASE_STABILIZE": 7,
+    "RETREAT": 103
+  },
+  "video": {
+    "reported_frames": 768,
+    "independently_decoded_frames": 768,
+    "width": 640,
+    "height": 480,
+    "fps": 20.0,
+    "all_frames_nonblank": true,
+    "decoded_pixel_sha256": "a4a94a8f7511c4c36220f9a43a830dfa6e8d49b6253f54915418d4e2a4c93d71"
+  },
+  "local_result": "outputs/phase3_p3_public_env_api_seed61081.json",
+  "local_video": "outputs/phase3_p3_public_env_api_seed61081.mp4"
+}

@@ -1,0 +1,143 @@
+# Phase 3 V5 Runtime Migration
+
+Audit baseline: commit `947d27aab174067c8ed6e2fa38a0131226e19338`.
+Final audit date: 2026-09-16. The inventory below was regenerated from the
+current Python imports and physical evaluator call graph.
+
+## Result
+
+Stage VLA V7 runtime migration is complete for the locked cube-policy physical
+path:
+
+- formal `src/stage_vla_v7` and `tools/evaluation` physical runtime imports of
+  V5 Python modules: **0**;
+- evaluator calls to private environment methods: **0**;
+- evaluator mutations of protected environment state: **0**;
+- one lazy V5 import remains in
+  `action/evaluation/skill_evaluator.py`, reachable only through the explicit
+  `legacy_vectorized_skill_success` regression adapter: **LEGACY_ONLY**;
+- `vendor/stage_vla_v5` remains unchanged for provenance, regression oracles,
+  historical training, and the frozen evaluation JSON schema;
+- the eight V5-trained checkpoints remain external artifacts and were not
+  retrained or rewritten.
+
+`tools/evaluation/bootstrap.py` still makes the retained vendor source tree
+discoverable. Discoverability is not a runtime import: the verified evaluator
+never imports a V5 module. Parity tests add the vendor path explicitly and are
+outside the formal physical call graph.
+
+## Dependency count
+
+These milestone counts track the 19 direct V5 Python module paths in the Phase
+2 inventory. Temporary helper imports discovered while opening the old VecEnv
+were migrated and are listed separately below.
+
+| Milestone | Remaining original runtime modules | Result |
+|---|---:|---|
+| Phase 2 baseline | 19 | audited at `947d27a` |
+| P0 strict Vision policy | 19 | behavior fixed before dependency replacement |
+| P1 native success plus Vision | 16 | success, RGB/depth, detector and calibration switched |
+| P2 action bridge plus native environment | 14 | action output and V5 VecEnv switched |
+| P3 helpers, configuration, collection and public environment API | 0 | final formal runtime |
+
+The final source-text count is one V5 import, classified `LEGACY_ONLY`, and the
+final formal-runtime count is zero. These two numbers are intentionally not
+conflated.
+
+## Phase 2 dependency disposition
+
+| V5 module | Consumer before migration | Purpose | V7 target | Status | Parity test | Physical smoke |
+|---|---|---|---|---|---|---|
+| `tools.train_known_size_grasp` | `episode_runner.py` | size/object metadata loading | `simulation/config.py` | MIGRATED | configuration tests | PASS |
+| `stage_vla.action_output` | `episode_runner.py` | policy/reference output and active masks | `action/output.py`, `action/reference.py` | MIGRATED | 8-Skill action parity, max error `0.0` | PASS |
+| `stage_vla.data.v4_2_runtime` | `episode_runner.py` | RGB/depth tensor conversion | `simulation/isaac_lab/camera_adapter.py` | MIGRATED | reader shape/dtype/value parity | PASS |
+| `stage_vla.envs` | `env_factory.py` | fingertip contact sensor installation | `simulation/isaac_lab/contact_sensors.py` | MIGRATED | exact config parity | PASS |
+| `stage_vla.envs.fixed_object_pose` | `env_factory.py` | deterministic pose events | `simulation/isaac_lab/fixed_object_pose.py` | MIGRATED | exact pose/event parity | PASS |
+| `stage_vla.envs.fixed_tilt_ik` | `env_factory.py` | optional fixed-tilt action term | `simulation/isaac_lab/fixed_tilt_ik.py` | MIGRATED | action/config parity | branch disabled in locked smoke |
+| `stage_vla.envs.known_size_grasp_action` | factory and VecEnv | force-conditioned gripper control | `simulation/isaac_lab/gripper_action.py` | MIGRATED | exact action/controller parity | PASS |
+| `stage_vla.envs.physical_profiles` | `env_factory.py` | USD scale, mass and inertia writes | `simulation/isaac_lab/physical_profiles.py` | MIGRATED | exact USD/profile parity | PASS |
+| `stage_vla.envs.state_readers` | evaluator, factory and VecEnv | Isaac tensor/state sampling | `simulation/isaac_lab/state_reader.py` | MIGRATED | exact state parity | PASS |
+| `stage_vla.rl.known_size_grasp` | evaluator, factory and VecEnv | known-size config, pressure, control and motion helpers | `simulation/config.py`, `simulation/physics/known_size.py`, `action/safety.py` | MIGRATED | exact helper parity | PASS |
+| `stage_vla.rl.known_size_grasp_vecenv` | `episode_runner.py` | 55-D observation, lifecycle, control, reward and terminals | `simulation/isaac_lab/known_size_environment.py` plus V7 components | MIGRATED | exact 55-D observation and runtime behavior tests | PASS |
+| `stage_vla.rl.object_physics` | factory and VecEnv | per-environment physical profiles | `simulation/physics/object_profiles.py` | MIGRATED | shape/dtype/value parity | PASS |
+| `stage_vla.rl.reach_policy` | `episode_runner.py` | 52-D REACH observation/state/action | `simulation/environments/reach_observation.py`, `simulation/isaac_lab/reach_state.py`, `action_adapter.py` | MIGRATED | max observation error `0.0` | PASS |
+| `stage_vla.rl.skill_action_safety` | evaluator and VecEnv | action projections and failure guards | `action/safety.py`, `action/evaluation/physical_runtime.py` | MIGRATED | boolean/action parity | PASS |
+| `stage_vla.rl.skill_demonstrations` | `episode_runner.py` | demonstration and DAgger buffer | `tools/evaluation/data_collection.py` | MIGRATED | buffer/manifest parity | not enabled in locked smoke |
+| `stage_vla.rl.v5_skill_contracts` | evaluator and Action evaluation | success and reference action | native success/reference modules | LEGACY_ONLY | native parity retained against this oracle | not in runtime |
+| `stage_vla.stages.grasp_geometry` | evaluator and VecEnv | target and parallel-jaw geometry | `simulation/physics/grasp_geometry.py` | MIGRATED | exact geometry parity | PASS |
+| `stage_vla.stages.object_motion` | `cli.py` | frozen motion limits | `simulation/config.py` | MIGRATED | exact config parity | PASS |
+| `stage_vla.vision` | `episode_runner.py` | calibration and compact RGB-D detector | `vision/geometry`, `vision/providers/color_depth_detector.py` | MIGRATED | detector/calibration parity | PASS |
+
+## Hidden VecEnv dependencies
+
+Opening the V5 VecEnv exposed additional transitive responsibilities. They
+were not left behind as adapters.
+
+| V5 module | Purpose | V7 target | Status | Parity test | Physical smoke |
+|---|---|---|---|---|---|
+| `stage_vla.stages.physical_grasp` | contact geometry and physical grasp | `simulation/physics/physical_grasp.py` | MIGRATED | exact diagnostics parity | PASS |
+| `stage_vla.rl.align_reward` | ALIGN reward terms | `simulation/environments/align_reward.py` | MIGRATED | exact reward parity | PASS |
+| `stage_vla.rl.transport_handoff` | transport settle/reward terms | `simulation/environments/transport_handoff.py` | MIGRATED | exact reward/handoff parity | PASS |
+| `stage_vla.rl.fixed_tilt_reference` | quaternion math and reference state | `simulation/physics/fixed_tilt.py` | MIGRATED | exact math/reset/clipping parity | optional branch disabled |
+| `stage_vla.rl.place_snapshot` | single-state batch expansion | `simulation/isaac_lab/snapshot_state.py` | MIGRATED | exact tensor expansion parity | PASS |
+
+## Public environment boundary
+
+`KnownSizeGraspEnvironment` now owns the former evaluator-side bookkeeping.
+The supported evaluation surface is:
+
+```text
+reset / observe / step
+configure_evaluation / configure_skill
+synchronize_after_external_step
+get_physical_state / physical_state
+status / gripper_diagnostics
+object_size_m / current_skill / stability_speed_source
+set_object_roles / set_visual_object_positions
+```
+
+`configure_skill` preserves the historical operation order: measure, change
+Skill, mark continuous handoff, unlock the arm, update horizons, clear
+counters and terminal masks, mark inactive environments finished, measure
+again, require exact physical equality, and refresh the LIFT target when
+needed. AST tests reject future evaluator calls to `env._...` and direct
+mutation of these protected fields.
+
+## Final validation
+
+| Acceptance item | Result |
+|---|---|
+| Oracle fallback strict mode | PASS |
+| `--require_v7_chain` strict Vision | PASS |
+| Native `SuccessChecker` runtime | PASS |
+| Success parity | PASS |
+| Native RGB reader | PASS |
+| Native depth reader | PASS |
+| Native detector | PASS |
+| Native calibration | PASS |
+| Action execution bridge | PASS |
+| Native vector environment | PASS |
+| Physical helper migration | PASS |
+| 8 checkpoint compatibility | PASS, max error `0.0` |
+| Action output parity | PASS |
+| Vision + Video | PASS |
+| Physical stack smoke | PASS, 1/1 |
+| V7 chain | PASS, 8/8 Skills and 7/7 exact handoffs |
+| Remaining V5 runtime imports | **0** |
+
+Final regression evidence:
+
+- `270` tests passed.
+- `evidence/phase3_checkpoint_compatibility.json`: all eight checkpoints,
+  action dimension 5, maximum absolute error `0.0`.
+- `evidence/phase3_runtime_migration_seed61081.summary.json`: tracked compact
+  Phase-3 audit and physical evidence.
+- `outputs/phase3_p3_public_env_api_seed61081.json`: strict Vision, 730 valid
+  calls, zero invalid frames, zero oracle fallback, no reference/recovery,
+  and `v7_chain.verified=true`.
+- `outputs/phase3_p3_public_env_api_seed61081.mp4`: independently decoded
+  `768/768` frames at 640x480; decoded pixel SHA-256
+  `a4a94a8f7511c4c36220f9a43a830dfa6e8d49b6253f54915418d4e2a4c93d71`.
+
+The smoke proves preserved wiring and one locked seed. It is not a 20/50/100
+seed success-rate claim and does not extend the trained cube policy domain.

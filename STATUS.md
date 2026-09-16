@@ -4,92 +4,80 @@ Updated: 2026-09-16
 
 ## Implemented
 
-- Dependency-free `interfaces` contracts and public provider/simulator ports.
-- Independent Vision, Language, Action, Simulation, and Orchestration modules.
-- Replaceable Vision and Language registries; Chinese, English, and stack DSL.
-- Canonical registry and independent definitions for all eight Skills.
-- Isolated Action network, SHA-validating checkpoint loader, training, and
-  success-evaluation packages.
-- Simulator model registries for Franka, cube, RGB, and depth; `StackScene`,
-  seeded non-overlap randomization, and `RedOnBlueEnvironment`.
-- Canonical Isaac Lab adapters for camera, observation, action, runtime, and
-  audited batched pipeline dispatch.
-- V7-owned concrete Isaac environment factory with the old V5 path retained as
-  a compatibility re-export.
-- Separate 128 x 128 RGB-D Vision and 640 x 480 RGB Observer cameras, with
-  role/ID validation and an observer-only data path.
-- Streaming `VideoRecorder`, independent `FrameCapture` and overlays, plus
-  explicit strict and best-effort failure modes.
-- Evaluator compatibility entry reduced from 1,929 lines to 17 lines. CLI,
-  runtime assembly, Skill execution, task aggregation, data collection, trace,
-  and result writing now have separate owners under `tools/evaluation`; no
-  evaluator module exceeds 700 lines.
-- Split owner-specific configuration and train/evaluate/simulation/smoke entry
-  directories, with compatibility wrappers for existing imports and scripts.
-- Conservative V5 vendor classification; no vendor files deleted and 19
-  remaining direct V5 module dependencies enumerated.
+- Dependency-free public contracts and isolated Vision, Language, Action,
+  Orchestration, and Simulation ownership.
+- Eight independently registered Skills with the frozen 5D
+  `[dx, dy, dz, dyaw, grip]` action ABI.
+- SHA-validating TorchScript checkpoint loading and native V7 action routing,
+  reference actions, safety projections, and success/failure evaluation.
+- Native RGB/depth reading, calibration, compact color-depth detection, and
+  strict/debug-oracle Vision failure policies.
+- Native Isaac factory, contact/state readers, gripper controller, object and
+  physical profiles, fixed pose/tilt support, snapshot expansion, REACH state
+  and action adapters, and `KnownSizeGraspEnvironment`.
+- Typed `PhysicalState`, exact legacy-compatible 52-D/55-D observations, and
+  public environment APIs for observation, external-step synchronization,
+  Skill handoff, terminal status, and gripper diagnostics.
+- Separate Vision and Observer cameras plus strict streaming MP4 recording.
+- Split evaluator modules for CLI/preflight, assembly, execution, aggregation,
+  collection, trace, and result persistence. AST tests prevent evaluator use
+  of private environment methods or protected state mutation.
+- Native demonstration/DAgger buffer behavior used by evaluation collection.
+- Conservative V5 retention for history, regression and checkpoint provenance;
+  no vendor source or model artifact was deleted or rewritten.
 
-## Verified
+## Phase 3 verification
 
-- 99 unit, boundary, compatibility, Simulation, and integration tests pass
-  under Isaac Sim Python 3.12.13.
-- `compileall` passes for `src`, `tests`, `scripts`, and `tools`.
-- All 145 package modules import under the Isaac Python validation environment
-  without starting Isaac Lab or a simulator process; top-level
-  `import stage_vla_v7` also passes under bare Python 3.11.
-- Static tests enforce dependency-free Interfaces, Vision/Language/Action
-  isolation, no Isaac dependency in Action/Orchestration, and no Simulation
-  dependency in the pipeline.
-- Chinese CLI resolves red-on-blue to the canonical eight-Skill sequence.
-- All eight real V5 checkpoints match locked hashes; direct legacy inference
-  plus frozen safety and refactored ActionService outputs have maximum absolute
-  error `0.0`.
-- Post-environment-migration physical RGB-D smoke passes 1/1 through
-  `stage_vla_v7.simulation.isaac_lab` with the artifact lock enforced.
-- Post-evaluator-split dual-camera headless physical smoke passes 1/1 with a
-  decodable 640 x 480, 20 FPS MP4 containing 767 frames; Observer data was not
-  used for Vision.
-- Dual-camera audit: 729 V7 Vision calls, zero invalid frames, all eight prepared
-  tokens exercised, zero mid-episode resets, no reference Skills, no recovery,
-  and `v7_chain.verified=true` with `--require_v7_chain`.
+- Full suite: **270 passed** under `E:\work\IsaacLab` Isaac Sim Python.
+- `compileall`: `src`, `tests`, `scripts`, and `tools` pass.
+- Dependency-boundary and evaluator-public-API guards pass.
+- Formal physical runtime V5 imports: **0**.
+- Source-only lazy V5 imports: **1**, explicitly `LEGACY_ONLY` in the
+  regression adapter.
+- All eight locked checkpoints load with their expected hashes, retain action
+  dimension 5, and produce maximum action error **0.0**.
+- Strict seed-61081 Vision + Video smoke: 1/1 physical task, 8/8 Skills, 7/7
+  exact handoffs, zero mid-episode resets, 730 valid Vision calls, zero invalid
+  frames, zero oracle fallback, no reference/recovery calls, and
+  `v7_chain.verified=true`.
+- Independent MP4 decode: 768/768 frames, 640x480, all frames nonblank; decoded
+  pixel SHA-256
+  `a4a94a8f7511c4c36220f9a43a830dfa6e8d49b6253f54915418d4e2a4c93d71`.
 
 ## Evidence
 
-- `evidence/phase2_checkpoint_compatibility_baseline.json`
-- `evidence/phase2_checkpoint_compatibility_post.json`
-- `evidence/phase2_vision_video_physical.json`
-- `evidence/v7_vla_smoke_refactor_seed61081.summary.json`
+- `docs/VENDOR_MIGRATION_PHASE3.md`
+- `evidence/phase3_checkpoint_compatibility.json`
+- `evidence/phase3_runtime_migration_seed61081.summary.json`
+- `outputs/phase3_p3_public_env_api_seed61081.json` (local, ignored)
+- `outputs/phase3_p3_public_env_api_seed61081.mp4` (local, ignored)
 - `docs/VALIDATION.md`
 
-## Phase-2 acceptance
+## Phase 3 acceptance
 
 | Item | Status | Evidence |
 |---|---|---|
-| Core boundary | PASS | dependency-boundary tests |
-| 8 Skill compatibility | PASS | registry tests and 8/8 physical execution |
-| Checkpoint compatibility | PASS | 8/8, maximum action error `0.0` |
-| Simulation registry | PASS | registry/fail-closed tests |
-| V5 dependency migration | PARTIAL | factory migrated; 19 direct V5 module paths remain |
-| Evaluator split | PASS | 17-line entry; 7 focused evaluation modules, all <= 700 lines |
-| VideoRecorder | PASS | unit tests and decoded physical MP4 |
-| Dual Camera | PASS | isolated bindings and physical two-camera run |
-| Vision + Video | PASS | 729 Vision calls and 767 video frames together |
-| V7 Chain | PASS | `v7_chain.verified=true` |
-| Physical task | PASS | 1/1 stable stack episode |
+| Strict Vision, no oracle fallback | PASS | 730/730 valid calls; fallback count 0 |
+| Native SuccessChecker | PASS | parity tests and physical runtime |
+| Native Vision runtime | PASS | reader/detector/calibration parity and smoke |
+| Native action bridge | PASS | 8-Skill parity; max error `0.0` |
+| Native vector environment | PASS | exact observation tests and public API guard |
+| Physical helpers | PASS | cluster parity tests and final smoke |
+| Checkpoint compatibility | PASS | 8/8; maximum error `0.0` |
+| Vision + Video | PASS | strict smoke and complete independent decode |
+| V7 chain | PASS | 8/8 Skills; 7/7 exact handoffs |
+| Remaining formal V5 runtime imports | PASS | 0 |
 
 ## Current limitations
 
 - Policies remain V5-trained artifacts; no retraining was performed.
-- The concrete factory is V7-owned, but the vector environment, gripper,
-  state readers, contacts, physical profiles, detector, and frozen helpers
-  remain adapted from `vendor/stage_vla_v5`.
-- Language is deterministic; no remote LLM/VLM is connected.
-- Vision supplies object positions while proprioception, orientation, contacts,
-  and physical terminal feedback still come from Isaac state.
 - The validated policy domain remains rigid 4 cm, 0.05 kg cubes.
-- One physical seed verifies preserved wiring and behavior, not a multi-seed
-  generalization rate.
-- The executor still adapts retained V5 physical helpers through an explicit
-  context; replacing that compatibility boundary belongs to a later migration.
-- Ruff was not installed in the available Python or system environment;
-  syntax/import validation used `compileall` plus the full test suite.
+- Vision supplies object positions; robot proprioception, orientation, contact,
+  and physical terminal feedback still come from Isaac state.
+- Language is deterministic; no remote LLM or VLM is connected.
+- The final physical regression uses one locked seed. It validates migration
+  fidelity, not a multi-seed generalization or success-rate claim.
+- The optional fixed-tilt branch has behavior parity but is disabled by the
+  locked physical smoke configuration.
+- `vendor/stage_vla_v5` remains intentionally available for historical
+  training, regression tests, and provenance.

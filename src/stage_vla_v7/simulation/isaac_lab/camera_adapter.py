@@ -49,6 +49,51 @@ class IsaacCameraAdapter:
             raise ValueError("Observer camera does not expose an RGB output")
         return output["rgb"][int(environment_index), ..., :3]
 
+    def rgb_u8_batch(
+        self,
+        camera: object,
+        *,
+        camera_name: str = VISION_CAMERA_NAME,
+    ) -> Any:
+        """Read Isaac RGB output as contiguous uint8 ``[N,H,W,3]``."""
+        output = self._camera_output(camera)
+        if "rgb" not in output:
+            raise RuntimeError(f"camera {camera_name!r} has no rgb output")
+        torch = self._torch()
+        rgb = self._to_torch(output["rgb"])
+        if rgb.ndim != 4 or rgb.shape[-1] < 3:
+            raise RuntimeError(f"unexpected batched camera RGB shape: {tuple(rgb.shape)}")
+        rgb = rgb[..., :3]
+        if torch.is_floating_point(rgb):
+            max_value = float(rgb.max().item()) if rgb.numel() else 0.0
+            if max_value <= 1.0 + 1e-6:
+                rgb = rgb * 255.0
+            rgb = rgb.round().clamp(0.0, 255.0).to(torch.uint8)
+        else:
+            rgb = rgb.to(torch.uint8)
+        return self._numpy().ascontiguousarray(rgb.detach().cpu().numpy())
+
+    def depth_m_batch(
+        self,
+        camera: object,
+        *,
+        camera_name: str = VISION_CAMERA_NAME,
+    ) -> Any:
+        """Read Isaac image-plane distance as contiguous float32 ``[N,H,W]``."""
+        output = self._camera_output(camera)
+        key = "distance_to_image_plane"
+        if key not in output:
+            raise RuntimeError(f"camera {camera_name!r} has no {key} output")
+        depth = self._to_torch(output[key])
+        if depth.ndim == 4 and depth.shape[-1] == 1:
+            depth = depth[..., 0]
+        elif depth.ndim != 3:
+            raise RuntimeError(f"unexpected batched camera depth shape: {tuple(depth.shape)}")
+        numpy = self._numpy()
+        return numpy.ascontiguousarray(
+            depth.detach().cpu().numpy().astype(numpy.float32, copy=False)
+        )
+
     def to_vision_request(
         self,
         rgb: object,
@@ -68,3 +113,33 @@ class IsaacCameraAdapter:
             calibration=dict(calibration or {}),
             metadata=details,
         )
+
+    @staticmethod
+    def _camera_output(camera: object) -> Mapping[str, object]:
+        data = getattr(camera, "data", None)
+        output = getattr(data, "output", None)
+        if not isinstance(output, Mapping):
+            raise RuntimeError("Isaac camera does not expose an output mapping")
+        return output
+
+    @staticmethod
+    def _torch() -> Any:
+        try:
+            import torch
+        except ImportError as exc:  # pragma: no cover - Isaac Lab supplies torch
+            raise RuntimeError("Isaac camera conversion requires torch") from exc
+        return torch
+
+    @staticmethod
+    def _numpy() -> Any:
+        try:
+            import numpy
+        except ImportError as exc:  # pragma: no cover - Isaac Lab supplies numpy
+            raise RuntimeError("Isaac camera conversion requires numpy") from exc
+        return numpy
+
+    @classmethod
+    def _to_torch(cls, value: object) -> Any:
+        if hasattr(value, "torch"):
+            value = getattr(value, "torch")
+        return cls._torch().as_tensor(value)

@@ -31,6 +31,7 @@ def _xy_distance(a: Vector3, b: Vector3) -> float:
 class SkillTolerances:
     grasp_distance_m: float = 0.022
     pregrasp_tip_height_m: float = 0.010
+    grasp_contact_tip_height_m: float = 0.007
     pregrasp_tip_xy_m: float = 0.012
     pregrasp_tip_z_error_m: float = 0.003
     lift_height_m: float = 0.060
@@ -175,6 +176,46 @@ class SuccessChecker:
 
         reason = "success" if success else "failure" if failure else "in_progress"
         return SuccessCheck(canonical, success, failure, reason, metrics)
+
+    def evaluate_batch(
+        self,
+        skill: Skill | str,
+        state: Mapping[str, object],
+        *,
+        stable_count: object = 1,
+        stable_steps: int = 3,
+    ) -> object:
+        """Evaluate batched Torch state with the same frozen success semantics."""
+        from .vectorized_success import vectorized_skill_success
+
+        return vectorized_skill_success(
+            skill,
+            state,
+            tolerances=self.tolerances,
+            stable_count=stable_count,
+            stable_steps=stable_steps,
+        )
+
+    def evaluate_failure_batch(
+        self,
+        skill: Skill | str,
+        state: Mapping[str, object],
+    ) -> object:
+        """Evaluate batched Torch state with the frozen terminal-failure semantics."""
+        from .vectorized_success import vectorized_skill_failure
+
+        return vectorized_skill_failure(skill, state, tolerances=self.tolerances)
+
+    def evaluate_physical_runtime(
+        self,
+        skill: Skill | str,
+        state: Mapping[str, object],
+        **kwargs: object,
+    ) -> object:
+        """Evaluate the physical VecEnv terminal contract without V5 code."""
+        from .physical_runtime import evaluate_physical_skill
+
+        return evaluate_physical_skill(skill, state, **kwargs)
 
     @staticmethod
     def _too_low(state: SkillEvaluationState) -> bool:

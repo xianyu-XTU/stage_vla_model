@@ -15,10 +15,10 @@ The actual environment factory is now
 only registered environment names and lazily starts Isaac dependencies after
 the application launcher is active. The historical V5 factory module forwards
 to this implementation. Low-level gripper actions, contact/state readers,
-physical profiles, and the vector wrapper remain V5 runtime dependencies;
-therefore the migration status is PARTIAL. `CallbackIsaacLabRuntime` exposes
-reset, observe, step, and close callbacks through the public
-`SimulationEnvironment` port.
+physical profiles, fixed pose/tilt helpers, REACH sampling, and the known-size
+environment are native V7 components. `CallbackIsaacLabRuntime` exposes reset,
+observe, step, and close callbacks through the public `SimulationEnvironment`
+port.
 
 ## Supported entities
 
@@ -135,11 +135,12 @@ physics, and randomization selections. The frozen physical smoke layout is
 `config/simulation/observer_camera.json`. Large USD assets remain external and
 are referenced by logical manifests.
 
-## Remaining V5 runtime boundary
+## Retained V5 boundary
 
-There are 19 unique direct V5 module paths imported by the current V7 physical
-factory/evaluator/success adapter, excluding their transitive imports. They own
-the known-size gripper, contacts, state reads, physical object profiles, vector
-environment, frozen reach/Skill helpers, compact detector, and metadata
-loading. The exact inventory and disposition are maintained in
-`docs/VENDOR_CLASSIFICATION.md`. No vendor source is classified DELETE.
+The formal factory/evaluator path imports zero V5 Python modules. One lazy
+success-function adapter remains `LEGACY_ONLY` for parity tests and is not
+called by physical evaluation. The vendor tree is still used as historical
+source, a regression oracle, checkpoint provenance, and the location of the
+frozen evaluation JSON consumed as data. The exact per-module disposition is
+maintained in `docs/VENDOR_MIGRATION_PHASE3.md`; no vendor source is classified
+for deletion.

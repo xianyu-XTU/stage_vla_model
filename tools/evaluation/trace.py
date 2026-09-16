@@ -25,7 +25,8 @@ class PhysicalTraceCollector:
         if self.args.trace_env is None:
             return
         index = self.args.trace_env
-        measured = self.env.measured
+        measured = self.env.physical_state
+        status = self.env.status
         relative = measured["red"][index] - measured["blue"][index]
         jaw = measured["right_tip"][index] - measured["left_tip"][index]
         leveling = self.helpers.jaw_leveling_axis_angle(
@@ -36,7 +37,7 @@ class PhysicalTraceCollector:
             "relation": relation_index + 1,
             "skill": skill,
             "step": int(step),
-            "projected_action": self.env.prev_unit[index].detach().cpu().tolist(),
+            "projected_action": status.previous_action[index].detach().cpu().tolist(),
             "stack_relative_xyz_m": relative.detach().cpu().tolist(),
             "object_quaternion_xyzw": (
                 measured["red_quat"][index].detach().cpu().tolist()
@@ -74,7 +75,7 @@ class PhysicalTraceCollector:
             "jaw_leveling_axis_angle_rad": leveling.detach().cpu().tolist(),
             "force_n": measured["force"][index].detach().cpu().tolist(),
             "physical_grasp": bool(measured["physical"][index]),
-            "stable_steps": int(self.env.stable_count[index]),
+            "stable_steps": int(status.stable_count[index]),
         }
         if checkpoint_action is not None:
             row["checkpoint_action"] = (

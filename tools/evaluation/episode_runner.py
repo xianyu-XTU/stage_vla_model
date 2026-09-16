@@ -9,16 +9,28 @@ from typing import Any
 import numpy as np
 
 from .bootstrap import V7_ROOT
+from .audit import verify_v7_chain
 from .camera_setup import build_evaluation_camera_specs, camera_cfg_transform
 from .cli import EvaluationPlan
 from .constants import ASSET_TO_VISION_LABEL, EXTRA_CUBE_COLORS
-from .data_collection import write_data_manifests
+from .data_collection import SkillDemonstrationBuffer, write_data_manifests
+from .debug_oracle import read_debug_oracle_local_positions
 from .result_writer import ResultContext, build_evaluation_result, write_json_result
 from .task_evaluator import evaluate_task
 from .task_executor import ExecutionHelpers, TaskExecutionContext, execute_task
+from .vision_policy import VisionDetectionError, VisionFailPolicy, VisionPositionResolver
+from stage_vla_v7.action import ActionOutputModule
+from stage_vla_v7.action import (
+    hold_finished_skill_action,
+    jaw_leveling_axis_angle,
+    object_upright_tilt_rad,
+    project_pregrasp_edge_alignment,
+)
 from stage_vla_v7.contracts import ObjectDetection, SceneState, Skill
-from stage_vla_v7.action.evaluation import legacy_vectorized_skill_success
+from stage_vla_v7.action.evaluation import SuccessChecker
 from stage_vla_v7.orchestration import StageVLAPipeline, default_cube_catalog
+from stage_vla_v7.simulation.config import load_known_size_config, load_object_metadata
+from stage_vla_v7.simulation.environments import reach_observation
 from stage_vla_v7.simulation.isaac_lab import (
     OBSERVER_CAMERA_NAME,
     VISION_CAMERA_NAME,
@@ -26,15 +38,26 @@ from stage_vla_v7.simulation.isaac_lab import (
     PipelineActionSource,
     build_torchscript_cube_service,
     create_environment,
+    measure_reach_state,
+    reach_raw_action,
+    to_torch,
 )
 from stage_vla_v7.simulation.recording import FrameCapture, RecordingConfig, VideoRecorder
+from stage_vla_v7.simulation.physics import (
+    grasp_target_position,
+    local_width_ratio,
+    parallel_jaw_yaw_error,
+    pressure_tracking_ok,
+    profile_from_config,
+)
 from stage_vla_v7.vision import (
-    LegacyDetectorAdapter,
+    CameraCalibration,
+    CompactColorDepthDetector,
+    CompactColorDepthProvider,
     StaticVisionProvider,
     VisionRequest,
     VisionService,
 )
-from tools.train_known_size_grasp import _load_object_metadata, _load_size
 
 
 def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
@@ -62,33 +85,17 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
     raw = env = None
     video_recorder = None
     recording_result = None
+    vision_stats: dict[str, object] | None = None
+    vision_seed_valid = None
     try:
         import torch
-        from stage_vla.action_output import ActionOutputModule
-        from stage_vla.data.v4_2_runtime import read_depth_m_batch, read_rgb_u8_batch
-        from stage_vla.envs.state_readers import to_torch
-        from stage_vla.rl.reach_policy import measure_reach_state, reach_observation, reach_raw_action
-        from stage_vla.rl.v5_skill_contracts import reference_action
-        from stage_vla.rl.known_size_grasp_vecenv import KnownSizeGraspVecEnv
-        from stage_vla.rl.known_size_grasp import pressure_tracking_ok
-        from stage_vla.rl.skill_action_safety import (
-            hold_finished_skill_action,
-            jaw_leveling_axis_angle,
-            object_upright_tilt_rad,
-            project_pregrasp_edge_alignment,
+        from stage_vla_v7.simulation.isaac_lab.known_size_environment import (
+            KnownSizeGraspEnvironment,
         )
-        from stage_vla.rl.skill_demonstrations import SkillDemonstrationBuffer
-        from stage_vla.stages.grasp_geometry import (
-            grasp_target_position,
-            local_width_ratio,
-            parallel_jaw_yaw_error,
-            profile_from_config,
-        )
-        from stage_vla.vision import CameraCalibration, CompactColorDepthDetector
-        skill_success = legacy_vectorized_skill_success
+        skill_success = SuccessChecker().evaluate_batch
 
-        size = _load_size(args.config.resolve())
-        object_geometry, object_color_rgb = _load_object_metadata(args.config.resolve())
+        size = load_known_size_config(args.config.resolve())
+        object_geometry, object_color_rgb = load_object_metadata(args.config.resolve())
         grasp_profile = profile_from_config(args.config.resolve(), geometry=object_geometry)
         size = replace(
             size,
@@ -172,7 +179,7 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
         # Construct the wrapper before REACH.  RslRlVecEnvWrapper performs an
         # initial reset in its constructor; constructing it after REACH would
         # silently destroy the physical REACH exit and invalidate the handoff.
-        env = KnownSizeGraspVecEnv(
+        env = KnownSizeGraspEnvironment(
             raw, known_size=size, skill="GRASP", snapshots=(),
             episode_steps=args.grasp_steps, stable_steps=args.grasp_stable_steps,
             lift_translation_limit_m=args.lift_translation_limit_m,
@@ -205,26 +212,41 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             object_asset_name=task_pairs[0][0],
             support_asset_name=task_pairs[0][1],
         )
-        env.auto_reset = False
-        env.physical_cfg = replace(
-            env.physical_cfg, height_tolerance_m=float(args.physical_height_tolerance_m)
+        env.configure_evaluation(
+            auto_reset=False,
+            physical_height_tolerance_m=args.physical_height_tolerance_m,
         )
 
         vision_stats = {
             "enabled": bool(args.use_vision),
             "frames": 0,
-            "invalid_frames": 0,
             "v7_service_calls": 0,
+            "fail_policy": args.vision_fail_policy,
+            "strict_mode": bool(
+                args.use_vision and args.vision_fail_policy == VisionFailPolicy.STRICT.value
+            ),
+            "invalid_frames": 0,
             "missing_by_asset": {name: 0 for name in scene_assets},
+            "failed_objects": [],
+            "oracle_fallback_used": False,
+            "oracle_fallback_count": 0,
+            "oracle_fallback_objects": [],
+            "oracle_fallback_steps": [],
+            "oracle_fallback_events": [],
         }
         vision_detector = None
         vision_camera = None
         vision_calibration = None
         vision_service = None
         vision_origins = None
-        vision_tracked: dict[str, np.ndarray] = {}
         vision_seed_valid = np.ones(args.num_envs, dtype=bool)
+        vision_position_resolver = None
         if args.use_vision:
+            vision_position_resolver = VisionPositionResolver(
+                VisionFailPolicy(args.vision_fail_policy),
+                tuple(scene_assets),
+                args.num_envs,
+            )
             vision_camera = camera_bindings.vision
             assert vision_camera is not None
             vision_origins = to_torch(raw.unwrapped.scene.env_origins)[:, :3]
@@ -265,17 +287,10 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
                 position_bias_m=tuple(args.geometry_bias_m),
             )
             vision_service = VisionService(
-                LegacyDetectorAdapter(
-                    vision_detector,
-                    name="v7-compact-color-depth",
-                    version="1",
-                    method="detect_scene",
-                    method_kwargs={
-                        "calibration": vision_calibration,
-                        "labels": tuple(
-                            ASSET_TO_VISION_LABEL[name] for name in scene_assets
-                        ),
-                    },
+                CompactColorDepthProvider(
+                    detector=vision_detector,
+                    calibration=vision_calibration,
+                    labels=tuple(ASSET_TO_VISION_LABEL[name] for name in scene_assets),
                 )
             )
             warmup_action = torch.zeros(
@@ -307,8 +322,12 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             assert vision_calibration is not None
             assert vision_service is not None
             assert vision_origins is not None
-            rgb = read_rgb_u8_batch(raw.unwrapped, camera_name=VISION_CAMERA_NAME)
-            depth = read_depth_m_batch(raw.unwrapped, camera_name=VISION_CAMERA_NAME)
+            rgb = camera_adapter.rgb_u8_batch(
+                vision_camera, camera_name=VISION_CAMERA_NAME
+            )
+            depth = camera_adapter.depth_m_batch(
+                vision_camera, camera_name=VISION_CAMERA_NAME
+            )
             predicted = {
                 name: np.full((args.num_envs, 3), np.nan, dtype=np.float32)
                 for name in scene_assets
@@ -326,42 +345,33 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
                 by_label = {item.label: item for item in observed.scene.detections}
                 for asset_name in scene_assets:
                     detection = by_label.get(ASSET_TO_VISION_LABEL[asset_name])
-                    if detection is None:
-                        vision_stats["missing_by_asset"][asset_name] += 1
-                    else:
+                    if detection is not None:
                         predicted[asset_name][env_index] = np.asarray(
                             detection.position_xyz_m, dtype=np.float32
                         )
-            valid = np.ones(args.num_envs, dtype=bool)
+            vision_stats["frames"] += int(args.num_envs)
+            assert vision_position_resolver is not None
+            oracle_loader = None
+            if args.vision_fail_policy == VisionFailPolicy.DEBUG_ORACLE.value:
+                oracle_loader = lambda asset_name: read_debug_oracle_local_positions(
+                    raw,
+                    vision_origins,
+                    asset_name,
+                    to_torch=to_torch,
+                )
+            try:
+                resolved, valid = vision_position_resolver.resolve(
+                    predicted,
+                    oracle_loader=oracle_loader,
+                )
+            finally:
+                vision_stats.update(vision_position_resolver.audit())
             result = {}
-            for asset_name, local_xyz in predicted.items():
-                observed = np.isfinite(local_xyz).all(axis=1)
-                previous = vision_tracked.get(asset_name)
-                if previous is None:
-                    vision_tracked[asset_name] = local_xyz.copy()
-                else:
-                    local_xyz = np.where(observed[:, None], local_xyz, previous)
-                    vision_tracked[asset_name] = np.where(
-                        observed[:, None], local_xyz, previous
-                    )
-                asset_valid = np.isfinite(local_xyz).all(axis=1)
-                valid &= asset_valid
-                if not bool(asset_valid.all()):
-                    oracle_world = to_torch(
-                        raw.unwrapped.scene[asset_name].data.root_pos_w
-                    )[..., :3]
-                    oracle_local = (
-                        oracle_world - vision_origins
-                    ).detach().cpu().numpy()
-                    local_xyz = np.where(
-                        asset_valid[:, None], local_xyz, oracle_local
-                    )
+            for asset_name, local_xyz in resolved.items():
                 result[asset_name] = (
                     torch.as_tensor(local_xyz, device=env.device, dtype=torch.float32)
                     + vision_origins
                 )
-            vision_stats["frames"] += int(args.num_envs)
-            vision_stats["invalid_frames"] += int((~valid).sum())
             vision_seed_valid[:] &= valid
             return result, valid
 
@@ -410,11 +420,11 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
 
         assert vision_service is not None
         if args.use_vision:
-            initial_rgb = read_rgb_u8_batch(
-                raw.unwrapped, camera_name=VISION_CAMERA_NAME
+            initial_rgb = camera_adapter.rgb_u8_batch(
+                vision_camera, camera_name=VISION_CAMERA_NAME
             )[0]
-            initial_depth = read_depth_m_batch(
-                raw.unwrapped, camera_name=VISION_CAMERA_NAME
+            initial_depth = camera_adapter.depth_m_batch(
+                vision_camera, camera_name=VISION_CAMERA_NAME
             )[0]
             initial_frame = VisionRequest(
                 rgb=initial_rgb,
@@ -529,13 +539,13 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             for relation in relation_results
         )
         v7_audit = pipeline_action_source.audit()
-        v7_chain_verified = bool(
-            args.use_vision
-            and learned_reach
-            and not args.reference_skills
-            and not reach_reference_recovery_used
-            and vision_stats["v7_service_calls"] > 0
-            and v7_audit["all_prepared_skills_exercised"]
+        v7_chain_verified = verify_v7_chain(
+            use_vision=bool(args.use_vision),
+            learned_reach=learned_reach,
+            reference_skills=args.reference_skills,
+            reach_reference_recovery_used=reach_reference_recovery_used,
+            vision=vision_stats,
+            pipeline_audit=v7_audit,
         )
         if args.require_v7_chain and not v7_chain_verified:
             passed = False
@@ -586,6 +596,26 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             f"[V7 BENCHMARK] completed {result['chain_successes']}/{len(validation_envs)}",
             flush=True,
         )
+    except VisionDetectionError as exc:
+        assert vision_stats is not None
+        failure_result = {
+            "status": "failed",
+            "failure": exc.as_dict(),
+            "v7_chain": {
+                "verified": False,
+                "required": bool(args.require_v7_chain),
+                "command": command_text,
+            },
+            "vision": {
+                **vision_stats,
+                "seed_valid": (
+                    vision_seed_valid.tolist() if vision_seed_valid is not None else None
+                ),
+            },
+        }
+        write_json_result(out, failure_result)
+        print(json.dumps(failure_result, indent=2), flush=True)
+        raise
     except Exception:
         # Isaac's application shutdown can terminate the process before the
         # interpreter prints an unhandled traceback.  Emit it while Kit is

@@ -17,6 +17,7 @@ from .bootstrap import V7_ROOT
 from .constants import ASSET_TO_VISION_LABEL, EXTRA_CUBE_COLORS
 from stage_vla_v7.contracts import Skill
 from stage_vla_v7.language import DeterministicLanguageProvider, LanguageRequest, LanguageService
+from stage_vla_v7.simulation.config import motion_profile_from_config
 from stage_vla_v7.simulation.models import ObserverCameraModel
 from stage_vla_v7.simulation.randomization import load_layout_manifest, sample_red_blue_batch
 
@@ -91,6 +92,10 @@ def build_parser(app_launcher_class: Any) -> argparse.ArgumentParser:
         "--require_v7_chain",
         action="store_true",
         help="fail the result unless vision, language, and every learned action use V7 services",
+    )
+    parser.add_argument(
+        "--vision_fail_policy", choices=("strict", "debug_oracle"), default="strict",
+        help="strict fails on detection misses; debug_oracle enables audited truth fallback",
     )
     parser.add_argument("--camera_calibration", type=Path, default=None)
     parser.add_argument("--vision_confidence_floor", type=float, default=0.5)
@@ -369,8 +374,6 @@ def _validate_numeric_args(
     args: argparse.Namespace,
     parser: argparse.ArgumentParser,
 ) -> dict[str, float]:
-    from stage_vla.stages.object_motion import motion_profile_from_config
-
     if not 0.0 < args.vision_confidence_floor <= 1.0:
         parser.error("--vision_confidence_floor must be in (0,1]")
     if args.vision_min_pixels < 1:

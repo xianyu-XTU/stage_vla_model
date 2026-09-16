@@ -1,6 +1,13 @@
 """Concrete providers behind the public vision interface."""
 
+from .color_depth_detector import CompactColorDepthDetector, CompactColorDepthProvider
 from .legacy_provider import LegacyDetectorAdapter
 from .static_provider import CallableVisionProvider, StaticVisionProvider
 
-__all__ = ["CallableVisionProvider", "LegacyDetectorAdapter", "StaticVisionProvider"]
+__all__ = [
+    "CallableVisionProvider",
+    "CompactColorDepthDetector",
+    "CompactColorDepthProvider",
+    "LegacyDetectorAdapter",
+    "StaticVisionProvider",
+]

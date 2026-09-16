@@ -86,9 +86,17 @@ validated actions back to a Torch tensor.
 
 The concrete environment factory now lives in
 `simulation/isaac_lab/env_factory.py`. The former V5 factory is a compatibility
-re-export. The factory still lazily imports retained V5 gripper, contact,
-state-reader, physical-profile, and vector-control components, so runtime
-migration is explicitly PARTIAL rather than complete.
+re-export. Gripper control, contact sensors, state readers, object/physical
+profiles, fixed poses, fixed-tilt IK, snapshot expansion, REACH state sampling,
+and the known-size environment are all V7-owned. The formal physical runtime
+does not import V5 Python modules.
+
+`KnownSizeGraspEnvironment` orchestrates the frozen cube-policy behavior while
+delegating typed state, observations, success predicates, geometry, rewards,
+control conversion, and physics helpers to their owning V7 modules. Evaluation
+uses only its public `observe`, `configure_skill`, external-step synchronization,
+status, and diagnostics surface; AST tests reject private-method access and
+direct mutation of protected environment state.
 
 ## Camera and recording flow
 
@@ -132,13 +140,13 @@ are owned by their Simulation modules. Action terminal semantics remain in
 `PipelineActionSource.audit()` records language and vision providers, action
 providers and bundles, inference rows per Skill and token, batch calls, and
 safety projections. The evaluator's `--require_v7_chain` gate additionally
-requires all prepared tokens, no reference Skill, no reference recovery, a
-valid visual path, and a physically successful task.
+requires all prepared tokens, no reference Skill, no reference recovery, zero
+Vision-invalid frames, zero oracle fallback, a valid visual path, and a
+physically successful task.
 
-The evaluator now obtains vectorized terminal predicates through
-`action.evaluation.legacy_vectorized_skill_success`. That adapter deliberately
-calls the retained V5 tensor implementation so physical semantics are unchanged
-while ownership is centralized.
+The physical environment calls native V7 `SuccessChecker.evaluate_batch` for
+vectorized terminal predicates. `legacy_vectorized_skill_success` remains only
+as an explicit regression oracle and is not reachable from the formal runtime.
 
 ## Replaceability
 
