@@ -1,0 +1,13 @@
+{
+  "schema": "stage_vla_v5.asset_layout_batch.v1",
+  "mode": "frozen_v7_smoke",
+  "seed": 61081,
+  "num_envs": 1,
+  "minimum_separation_m": 0.09,
+  "asset_positions_local_xyz": {
+    "cube_1": [[0.46386252610600415, 0.08704969531333681, 0.0203]],
+    "cube_2": [[0.42334719269070775, -0.07558511420069945, 0.0203]],
+    "cube_3": [[0.5334817917243997, -0.1368953447047614, 0.0203]]
+  },
+  "seed_range": [61081, 61081]
+}

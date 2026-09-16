@@ -1,0 +1,30 @@
+{
+  "schema": "stage_vla_v7.validation_summary.v1",
+  "validated_at": "2026-09-16",
+  "status": "passed",
+  "command": "把红色方块放到蓝色方块上",
+  "physical_chain": {"successes": 1, "episodes": 1, "mid_episode_resets": 0},
+  "v7_chain": {
+    "verified": true,
+    "required": true,
+    "relations": 1,
+    "tokens": 8,
+    "language_provider": "deterministic-instruction-parser",
+    "vision_provider": "v7-compact-color-depth",
+    "action_bundle": "v7-migrated-v5-cube",
+    "all_prepared_skills_exercised": true,
+    "reference_skills": [],
+    "reference_recovery_used": false
+  },
+  "vision": {"service_calls": 730, "invalid_frames": 0},
+  "inference_rows_by_skill": {
+    "REACH": 374,
+    "GRASP": 31,
+    "LIFT": 60,
+    "TRANSPORT": 101,
+    "ALIGN": 32,
+    "DESCEND": 20,
+    "RELEASE_STABILIZE": 7,
+    "RETREAT": 103
+  }
+}

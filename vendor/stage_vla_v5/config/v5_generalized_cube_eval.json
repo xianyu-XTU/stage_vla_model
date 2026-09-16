@@ -1,0 +1,42 @@
+{
+  "schema": "stage_vla_v5.known_size_grasp.v1",
+  "mode": "oracle_state",
+  "vision_enabled": false,
+  "object": {
+    "label": "cube",
+    "width_m": 0.04,
+    "depth_m": 0.04,
+    "height_m": 0.04,
+    "mass_kg": 0.05
+  },
+  "gripper": {
+    "jaw_clearance_m": 0.002,
+    "max_compression_m": 0.004,
+    "friction_coefficient": 0.4,
+    "safety_factor": 2.0,
+    "min_force_n": 5.0,
+    "max_force_n": 40.0,
+    "pressure_tolerance_n": 1.5,
+    "force_balance_tolerance_n": 1.5,
+    "lift_acceleration_mps2": 0.5,
+    "joint_min_m": 0.0,
+    "joint_max_m": 0.04,
+    "feedback_gain_m_per_n": 0.0002,
+    "max_step_m": 0.001,
+    "residual_force_range_n": 0.1,
+    "residual_action_penalty": 0.5
+  },
+  "policy": {
+    "action_order": ["dx", "dy", "dz", "dyaw", "grip"],
+    "action_dim": 5,
+    "grip_semantics": "positive open; negative magnitude selects force residual"
+  },
+  "acceptance": {
+    "train_skill": "GRASP",
+    "followup_skill": "LIFT",
+    "required_physical_grasp_stable_steps": 3,
+    "max_mid_episode_resets": 0,
+    "report_as_vision_result": false,
+    "note": "Pure learned-policy cube-chain evaluation; reference_skills must remain empty"
+  }
+}

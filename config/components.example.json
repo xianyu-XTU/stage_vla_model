@@ -1,0 +1,28 @@
+{
+  "schema": "stage_vla_v7.components.v1",
+  "vision": {
+    "provider": "v5_yolo_rgbd",
+    "checkpoint": "E:/stage_vla_v5/outputs/yolo26n_cube_seg_pilot_v2/weights/best.pt",
+    "calibration": "E:/stage_vla_v5/outputs/vision_rgbd_mapping_calibration_train_20260910.json",
+    "device": "cuda:0"
+  },
+  "language": {
+    "provider": "deterministic",
+    "aliases": {}
+  },
+  "action": {
+    "provider": "v5_generalized_cube_torchscript",
+    "bundle_root": "E:/stage_vla_v5/outputs/v5_generalized_cube_bc_v1",
+    "control_hz": 20.0,
+    "observation_dims": {
+      "REACH": 52,
+      "GRASP": 55,
+      "LIFT": 55,
+      "TRANSPORT": 55,
+      "ALIGN": 55,
+      "DESCEND": 55,
+      "RELEASE_STABILIZE": 55,
+      "RETREAT": 55
+    }
+  }
+}
