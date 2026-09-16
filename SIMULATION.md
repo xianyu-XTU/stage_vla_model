@@ -102,6 +102,12 @@ Headless rendering is verified; Isaac Lab currently warns that `--headless` is
 deprecated, so use `--viz none` for direct commands on versions that support
 that spelling.
 
+Camera declarations used by evaluation live in
+`tools/evaluation/camera_setup.py`; runtime binding and frame capture are
+coordinated by `episode_runner.py`. Skill execution and task aggregation live in
+`task_executor.py` and `task_evaluator.py`, respectively. None of these layers
+creates a second environment or routes Observer RGB into model input.
+
 ## Adding entities
 
 To add a robot, create a descriptor under `simulation/models/robots`, including

@@ -14,7 +14,7 @@ from stage_vla_v7.simulation.isaac_lab import (
 )
 from stage_vla_v7.simulation.models import ObserverCameraModel
 from stage_vla_v7.simulation.scenes import StackScene
-from tools.evaluation.episode_runner import build_evaluation_camera_specs
+from tools.evaluation.camera_setup import build_evaluation_camera_specs
 
 
 def _camera(value: int) -> object:

@@ -109,12 +109,23 @@ warns, and leaves the control loop unchanged.
 
 ## Evaluation structure
 
-`tools/eval_v7_multicube_chain.py` only establishes the repository import path
-and invokes the evaluator. `tools/evaluation/episode_runner.py` owns the
-whole-episode experiment flow, while `result_writer.py` owns JSON persistence.
-Environment construction, layout parsing/randomization, camera adaptation,
-overlay rendering, and MP4 encoding are owned by their Simulation modules.
-Action terminal semantics remain in `action/evaluation`.
+`tools/eval_v7_multicube_chain.py` is a 17-line compatibility entry that only
+establishes the repository import path and invokes the CLI. Evaluation is split
+by responsibility:
+
+- `cli.py`: arguments, validation, task/layout/artifact resolution;
+- `episode_runner.py`: runtime assembly, application lifetime, and subsystem
+  coordination;
+- `task_executor.py`: REACH plus seven downstream Skills and state-exact
+  handoffs;
+- `task_evaluator.py`: relation and final-stack aggregation;
+- `data_collection.py` and `trace.py`: optional output collection;
+- `result_writer.py`: stable result schema and JSON persistence.
+
+No evaluation module exceeds 700 lines. Environment construction, layout
+parsing/randomization, camera adaptation, overlay rendering, and MP4 encoding
+are owned by their Simulation modules. Action terminal semantics remain in
+`action/evaluation`.
 
 ## Audit chain
 

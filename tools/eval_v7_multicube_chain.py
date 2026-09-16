@@ -10,7 +10,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from tools.evaluation.episode_runner import main  # noqa: E402
+from tools.evaluation.cli import main  # noqa: E402
 
 
 if __name__ == "__main__":

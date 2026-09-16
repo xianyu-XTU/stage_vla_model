@@ -134,13 +134,15 @@ The audit actions were applied without changing the eight Skills, five-value
   explicit strict/best-effort behavior.
 - Vision and Observer cameras now have independent IDs, outputs, bindings, and
   consumers. The Observer path cannot enter `VisionService`.
-- The original evaluator path is a 17-line entry; episode execution and JSON
-  persistence live in `tools/evaluation`.
+- The original evaluator path is a 17-line entry. CLI/preflight, runtime
+  assembly, Skill execution, task aggregation, data collection, trace, and
+  result writing have separate owners in `tools/evaluation`; every module is at
+  most 700 lines.
 - Direct V5 imports remain for 19 unique module paths, so V5 runtime migration
   is PARTIAL. See `docs/VENDOR_CLASSIFICATION.md` for the exact list.
 
-Post-change evidence is 96 passing tests, 8/8 checkpoint comparisons with
+Post-change evidence is 99 passing tests, 8/8 checkpoint comparisons with
 maximum error `0.0`, a passing post-factory RGB-D physical run, and a passing
-headless RGB-D + Observer MP4 run with 730 Vision calls, 768 video frames,
+headless RGB-D + Observer MP4 run with 729 Vision calls, 767 video frames,
 8/8 Skills, 7/7 state-exact handoffs, no reference/recovery calls, and
 `v7_chain.verified=true`.

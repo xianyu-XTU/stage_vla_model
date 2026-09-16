@@ -63,6 +63,8 @@ external artifacts, though loading and routing are V7-owned.
 | multi-camera declarations and binding | `simulation/config.py`, `camera_adapter.py` | dual-camera unit and physical smoke |
 | Observer model/config | `simulation/models/sensors/observer_camera.py` | registry/config tests and physical MP4 |
 | frame conversion, overlay, MP4 streaming | `simulation/recording/*` | strict/best-effort tests and decoded MP4 |
+| whole-task Skill execution and handoffs | `tools/evaluation/task_executor.py` | 8/8 physical Skill execution and 7/7 exact handoffs |
+| final relation/stack aggregation | `tools/evaluation/task_evaluator.py` | structure tests and physical task result |
 | whole-task JSON writing | `tools/evaluation/result_writer.py` | physical result output |
 
 Migration of a capability does not authorize deleting retained V5 modules that

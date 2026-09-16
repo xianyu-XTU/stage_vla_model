@@ -14,7 +14,7 @@ Validation date: 2026-09-16
 ## Automated tests
 
 ```text
-96 passed
+99 passed
 ```
 
 Coverage includes dependency-free contracts, strict import boundaries,
@@ -27,7 +27,8 @@ the complete Chinese-to-eight-Skill adapter chain.
 
 `python -m compileall -q src tests scripts tools` also passed. Ruff could not be
 run because it was not installed in either available Python environment.
-Isaac Python imported all 145 `stage_vla_v7` modules without an Isaac launcher
+Isaac Python imported the package root and all 144 discovered
+`stage_vla_v7` submodules (145 modules total) without an Isaac launcher
 or simulator process. Bare Python 3.11, which lacks the optional NumPy
 recording dependency, still imports top-level `stage_vla_v7` successfully.
 This confirms that simulator startup and recording packages are not
@@ -102,6 +103,12 @@ After moving concrete environment construction into
 no reference or recovery calls, and `v7_chain.verified=true`. Its full local
 output is `outputs/phase2_post_env_factory_seed61081.json`.
 
+After decomposing the evaluator into focused modules, a fresh physical RGB-D
+run again passed 1/1 with 729 Vision calls, zero invalid frames, 8/8 Skills,
+7/7 state-exact handoffs, no reference or recovery calls, and
+`v7_chain.verified=true`. Its ignored full output is
+`outputs/phase2_post_evaluator_split_seed61081.json`.
+
 ## Vision and observer-video smoke
 
 The following real Isaac run enabled RGB-D Vision, strict observer recording,
@@ -112,8 +119,8 @@ at the same time:
 scripts\smoke\run_v7_vision_video_smoke.ps1 `
   -IsaacLabRoot E:\work\IsaacLab `
   -ArtifactRoot E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 `
-  -Output outputs\phase2_vision_video_seed61081.json `
-  -VideoPath outputs\phase2_vision_video_seed61081.mp4
+  -Output outputs\phase2_post_evaluator_split_vision_video_seed61081.json `
+  -VideoPath outputs\phase2_post_evaluator_split_vision_video_seed61081.mp4
 ```
 
 | Check | Result |
@@ -122,18 +129,21 @@ scripts\smoke\run_v7_vision_video_smoke.ps1 `
 | V7 chain gate | passed |
 | Prepared Skill tokens | 8/8 |
 | State-exact handoffs | 7/7 |
-| V7 Vision calls / invalid frames | 730 / 0 |
+| V7 Vision calls / invalid frames | 729 / 0 |
 | Reference Skills / recovery calls | 0 / 0 |
-| Observer frames | 768 |
-| Observer output | 640 x 480, 20 FPS, 38.4 s |
+| Observer frames | 767 |
+| Observer output | 640 x 480, 20 FPS, 38.35 s |
 | Observer used for Vision | false |
 
-Imageio reopened the MP4 and reported 20 FPS, a 640 x 480 stream, and a
-`480 x 640 x 3` decoded frame. The MP4 was 10,028,567 bytes with SHA256
-`802eb56e406b250b0c28ad43150dd66e9e40ff52232bb4e9e75b3fa2e00000fb`.
+Imageio reopened the post-evaluator-split MP4, counted all 767 frames, and
+reported 20 FPS, a 640 x 480 stream, and a `480 x 640 x 3` decoded frame. The
+MP4 was 9,936,276 bytes with SHA256
+`2864b2f7a94891b4953a2818471f8609aed925029b79af5bfa73478fc472ba6b`.
 The tracked compact record is
 `evidence/phase2_vision_video_physical.json`; full output and media stay under
-ignored `outputs/`.
+ignored `outputs/`; the source result was
+`outputs/phase2_post_evaluator_split_vision_video_seed61081.json` with SHA256
+`4e1030815c462e80ae2814d8ba0ba546da05817ea17e3bd3825402e5be92dbe0`.
 
 ## Reproducible validation commands
 

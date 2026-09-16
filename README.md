@@ -38,9 +38,10 @@ Chinese / English / DSL            Isaac RGB-D
 - `orchestration`: task preparation, scheduling, execution context, and audit.
 - `simulation`: robot/object/sensor models, scenes, environments, physics,
   randomization, recording, and the Isaac Lab adapter/factory.
-- `tools/evaluation`: whole-episode execution and JSON result writing. The
-  historical `tools/eval_v7_multicube_chain.py` path is now a small CLI
-  compatibility entry.
+- `tools/evaluation`: CLI/preflight, runtime assembly, Skill execution, task
+  aggregation, optional collection/trace, and JSON result writing. The
+  historical `tools/eval_v7_multicube_chain.py` path is a 17-line compatibility
+  entry.
 
 `contracts`, module-local `interfaces.py`, legacy `adapters`, and
 `integrations.isaaclab` remain as compatibility imports. New code should use
@@ -114,6 +115,12 @@ Recording defaults to strict failure handling; direct evaluator users may pass
 The runner currently accepts `--headless`; Isaac Lab reports that flag as
 deprecated, so future direct invocations should prefer the installed version's
 `--viz none` equivalent when available.
+
+The 17-line evaluator entry forwards to `tools/evaluation/cli.py`. Runtime
+assembly, Skill execution, task aggregation, optional data collection, trace
+collection, and result writing are separate modules under `tools/evaluation`;
+the largest is 694 lines. Simulation owns environment, camera, randomization,
+and recording behavior, while Action continues to own success predicates.
 
 ## Documentation
 

@@ -167,7 +167,7 @@ omitted from the tree only to keep the ownership structure readable.
 | evaluator layout helpers | `simulation/randomization/object_pose.py` | schemas and seeded behavior retained |
 | evaluator MP4/overlay logic | `simulation/recording/*` | streaming recorder with strict/best-effort modes |
 | single shared camera branch | distinct Vision and Observer `CameraSpec` values | Observer is excluded from Vision input |
-| monolithic evaluator entry | `tools/evaluation/{episode_runner.py,result_writer.py}` | original CLI path forwards to the package |
+| monolithic evaluator | `tools/evaluation/{cli,episode_runner,task_executor,task_evaluator,data_collection,trace,result_writer}.py` | 17-line compatibility entry; all owner modules <= 700 lines |
 | mixed component JSON | split `config/{vision,language,action,simulation,tasks}` | example aggregate retained |
 | root smoke implementation | `scripts/smoke/run_v7_smoke.ps1` | root script forwards |
 
@@ -194,8 +194,10 @@ Phase 2 started from commit `b2e14c95557fff88839856865918dcbc7efd4be2`.
 The concrete Isaac environment factory, pure layout handling, camera
 declarations, and all video responsibilities moved to `simulation`. The old
 1,929-line `tools/eval_v7_multicube_chain.py` is now a 17-line compatibility
-entry. Whole-episode orchestration and JSON persistence live under
-`tools/evaluation`; Action success semantics remain under `action/evaluation`.
+entry. Argument/preflight handling, runtime assembly, Skill execution, task
+aggregation, optional collection/trace, and result writing are separate modules
+under `tools/evaluation`; Action success semantics remain under
+`action/evaluation`.
 
 The successful dual-camera run proves the two live paths are independent:
 
@@ -272,8 +274,17 @@ tools/
   summarize_stack_benchmark.py
   evaluation/
     __init__.py
+    artifacts.py
+    bootstrap.py
+    camera_setup.py
+    cli.py
+    constants.py
+    data_collection.py
     episode_runner.py
     result_writer.py
+    task_evaluator.py
+    task_executor.py
+    trace.py
   migration/
     verify_checkpoint_compatibility.py
 
@@ -304,6 +315,8 @@ tests/
   action/
     test_skill_registry.py
     test_torchscript_network.py
+  evaluation/
+    test_evaluator_structure.py
   integration/
     test_chinese_isaac_chain.py
   simulation/
