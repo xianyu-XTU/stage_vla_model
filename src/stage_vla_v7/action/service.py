@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from stage_vla_v7.contracts import ProviderError
+from stage_vla_v7.interfaces import ProviderError
 
-from .domain import ActionRouter
+from .action_list import ACTION_REGISTRY
+from .router import ActionRouter
 from .interfaces import ActionRequest, ActionResult
 from .safety import SafetyProjector
 
@@ -17,6 +18,7 @@ class ActionService:
         self.safety = safety or SafetyProjector()
 
     def act(self, request: ActionRequest) -> ActionResult:
+        definition = ACTION_REGISTRY.require(request.skill)
         bundle = self.router.route(request.object_profile, request.support_profile)
         policy = bundle.policy(request.skill)
         if len(request.observation) != policy.observation_dim:
@@ -36,6 +38,8 @@ class ActionService:
                 "bundle": bundle.descriptor.name,
                 "safety_projected": projected != result.action,
                 "finished": request.finished,
+                "skill_id": definition.skill_id,
+                "policy_slot": definition.policy_slot,
             }
         )
         return ActionResult(projected, result.provider, diagnostics)

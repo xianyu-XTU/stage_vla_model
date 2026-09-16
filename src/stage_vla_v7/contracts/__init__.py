@@ -1,39 +1,27 @@
-"""Public, dependency-free contracts for Stage VLA V7."""
+"""Backward-compatible import surface for the public interfaces layer."""
 
-from .errors import ContractError, ProviderError, RoutingError, StageVLAError, UnsupportedTaskError
-from .models import (
-    SKILL_SEQUENCE,
-    Diagnostics,
+from stage_vla_v7.interfaces import (
+    ContractError,
     ModelDescriptor,
     ObjectDetection,
     ObjectProfile,
-    ProviderResult,
+    ProviderError,
     RobotAction,
+    RobotObservation,
+    RoutingError,
+    SKILL_SEQUENCE,
     SceneState,
+    SimulationAction,
+    SimulationModelDescriptor,
+    SimulationObservation,
+    SimulationState,
     Skill,
     SkillToken,
     StackRelation,
+    StageVLAError,
     TaskPlan,
+    UnsupportedTaskError,
     expand_skill_tokens,
 )
 
-__all__ = [
-    "ContractError",
-    "Diagnostics",
-    "ModelDescriptor",
-    "ObjectDetection",
-    "ObjectProfile",
-    "ProviderError",
-    "ProviderResult",
-    "RobotAction",
-    "RoutingError",
-    "SKILL_SEQUENCE",
-    "SceneState",
-    "Skill",
-    "SkillToken",
-    "StackRelation",
-    "StageVLAError",
-    "TaskPlan",
-    "UnsupportedTaskError",
-    "expand_skill_tokens",
-]
+__all__ = [name for name in globals() if not name.startswith("_")]

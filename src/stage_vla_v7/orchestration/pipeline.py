@@ -2,29 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Sequence
 
-from stage_vla_v7.action import ActionRequest, ActionResult, ActionService
-from stage_vla_v7.contracts import SkillToken, expand_skill_tokens
+from stage_vla_v7.action import ActionRequest, ActionResult, ActionService, TaskScheduler
+from stage_vla_v7.interfaces import RobotObservation, SkillToken
 from stage_vla_v7.language import LanguageRequest, LanguageResult, LanguageService
 from stage_vla_v7.vision import VisionRequest, VisionResult, VisionService
 
 from .catalog import ObjectCatalog
-
-
-@dataclass(frozen=True)
-class PreparedTask:
-    """Bound language and vision results ready for skill execution."""
-
-    language: LanguageResult
-    vision: VisionResult
-    tokens: tuple[SkillToken, ...]
-
-    def __post_init__(self) -> None:
-        expected = expand_skill_tokens(self.language.plan)
-        if self.tokens != expected:
-            raise ValueError("prepared task tokens do not match the language plan")
+from .execution_context import ExecutionContext
+from .prepared_task import PreparedTask
 
 
 class StageVLAPipeline:
@@ -37,11 +24,13 @@ class StageVLAPipeline:
         language: LanguageService,
         action: ActionService,
         objects: ObjectCatalog,
+        scheduler: TaskScheduler | None = None,
     ) -> None:
         self.vision = vision
         self.language = language
         self.action = action
         self.objects = objects
+        self.scheduler = scheduler or TaskScheduler()
 
     def prepare(self, command: str, frame: VisionRequest) -> PreparedTask:
         """Observe the scene, interpret text, and bind required labels."""
@@ -58,22 +47,26 @@ class StageVLAPipeline:
                     f"relation is not stackable: {relation.object_label!r} -> "
                     f"{relation.support_label!r}"
                 )
-        return PreparedTask(semantic, visual, expand_skill_tokens(semantic.plan))
+        return PreparedTask(semantic, visual, self.scheduler.schedule(semantic.plan))
+
+    def prepare_context(self, context: ExecutionContext) -> PreparedTask:
+        return self.prepare(context.command, context.frame)
 
     def act(
         self,
         prepared: PreparedTask,
         token: SkillToken,
-        observation: Sequence[float],
+        observation: Sequence[float] | RobotObservation,
         *,
         finished: bool = False,
     ) -> ActionResult:
         """Run one scheduled skill through the sole continuous-action boundary."""
         if token not in prepared.tokens:
             raise ValueError("skill token does not belong to this prepared task")
+        values = observation.values if isinstance(observation, RobotObservation) else observation
         request = ActionRequest(
             skill=token.skill,
-            observation=tuple(observation),
+            observation=tuple(values),
             object_profile=self.objects.resolve(token.object_label),
             support_profile=self.objects.resolve(token.support_label),
             finished=finished,

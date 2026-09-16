@@ -12,7 +12,7 @@ from .action import (
     ConstantActionPolicy,
     PolicyDomain,
 )
-from .contracts import ModelDescriptor, ObjectDetection, RobotAction, SKILL_SEQUENCE, SceneState
+from .interfaces import ModelDescriptor, ObjectDetection, RobotAction, SKILL_SEQUENCE, SceneState
 from .language import DeterministicLanguageProvider, LanguageService
 from .orchestration import StageVLAPipeline, default_cube_catalog
 from .vision import StaticVisionProvider, VisionRequest, VisionService

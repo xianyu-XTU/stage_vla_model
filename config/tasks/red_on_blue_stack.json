@@ -1,0 +1,21 @@
+{
+  "schema": "stage_vla_v7.task.v1",
+  "name": "red_on_blue_stack",
+  "commands": {
+    "zh": "把红色方块放到蓝色方块上",
+    "en": "stack the red cube on the blue cube",
+    "dsl": "stack(red_cube, blue_cube)"
+  },
+  "object_label": "red_cube",
+  "support_label": "blue_cube",
+  "skill_sequence": [
+    "REACH",
+    "GRASP",
+    "LIFT",
+    "TRANSPORT",
+    "ALIGN",
+    "DESCEND",
+    "RELEASE_STABILIZE",
+    "RETREAT"
+  ]
+}

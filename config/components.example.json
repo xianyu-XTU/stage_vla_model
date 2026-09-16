@@ -1,5 +1,12 @@
 {
-  "schema": "stage_vla_v7.components.v1",
+  "schema": "stage_vla_v7.components.v2",
+  "canonical_configs": {
+    "vision": "vision/default.json",
+    "language": "language/deterministic.json",
+    "action": "action/v5_generalized_cube.json",
+    "simulation": "simulation/red_on_blue.json",
+    "task": "tasks/red_on_blue_stack.json"
+  },
   "vision": {
     "provider": "v5_yolo_rgbd",
     "checkpoint": "E:/stage_vla_v5/outputs/yolo26n_cube_seg_pilot_v2/weights/best.pt",

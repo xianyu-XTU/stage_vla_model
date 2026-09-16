@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from stage_vla_v7.contracts import ProviderError
-
-from .interfaces import LanguageProvider, LanguageRequest, LanguageResult
+from stage_vla_v7.interfaces import (
+    LanguageProvider,
+    LanguageRequest,
+    LanguageResult,
+    ProviderError,
+)
 
 
 class LanguageService:

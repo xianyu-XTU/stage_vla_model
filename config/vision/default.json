@@ -1,0 +1,9 @@
+{
+  "schema": "stage_vla_v7.vision.v1",
+  "provider": "v5_yolo_rgbd",
+  "checkpoint_artifact": "vision_detector",
+  "calibration_artifact": "rgbd_calibration",
+  "device": "cuda:0",
+  "inputs": ["rgb", "depth_m", "camera_calibration"],
+  "output": "SceneState"
+}

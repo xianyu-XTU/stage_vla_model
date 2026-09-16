@@ -8,6 +8,8 @@ adapter applies its environment-specific safety projection.
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 from dataclasses import replace
 import json
 import math
@@ -29,10 +31,15 @@ V5_ROOT = Path(
 sys.path.insert(0, str(V5_ROOT))
 sys.path.insert(0, str(V7_ROOT / "src"))
 
-from stage_vla_v7.contracts import ObjectDetection, SceneState, Skill
-from stage_vla_v7.integrations import PipelineActionSource, build_torchscript_cube_service
+from stage_vla_v7.contracts import ObjectDetection, SceneState, SKILL_SEQUENCE, Skill
+from stage_vla_v7.action.evaluation import legacy_vectorized_skill_success
 from stage_vla_v7.language import DeterministicLanguageProvider, LanguageRequest, LanguageService
 from stage_vla_v7.orchestration import StageVLAPipeline, default_cube_catalog
+from stage_vla_v7.simulation.isaac_lab import (
+    PipelineActionSource,
+    build_torchscript_cube_service,
+    make_legacy_v5_known_size_grasp_env,
+)
 from stage_vla_v7.vision import (
     LegacyDetectorAdapter,
     StaticVisionProvider,
@@ -83,6 +90,33 @@ def scene_cube_assets(count: int) -> tuple[str, ...]:
     return tuple(f"cube_{index}" for index in range(1, int(count) + 1))
 
 
+def load_action_checkpoint_hashes(path: Path) -> dict[Skill, str]:
+    """Load and validate all eight Skill records from the artifact lock."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schema") != "stage_vla_v7.external_artifacts.v2":
+        raise ValueError("unsupported artifact lock schema")
+    artifacts = payload.get("artifacts")
+    if not isinstance(artifacts, dict):
+        raise ValueError("artifact lock must contain an artifacts object")
+    result: dict[Skill, str] = {}
+    for skill in SKILL_SEQUENCE:
+        record = artifacts.get(skill.value.lower())
+        dimension = 52 if skill is Skill.REACH else 55
+        if (
+            not isinstance(record, dict)
+            or record.get("skill") != skill.value
+            or record.get("model_type") != "torchscript_parameter_policy"
+            or record.get("observation_dim") != dimension
+            or record.get("action_dim") != 5
+        ):
+            raise ValueError(f"invalid artifact lock record for {skill.value}")
+        digest = record.get("sha256")
+        if not isinstance(digest, str) or len(digest) != 64:
+            raise ValueError(f"invalid checkpoint SHA256 for {skill.value}")
+        result[skill] = digest
+    return result
+
+
 def main() -> None:
     from isaaclab.app import AppLauncher
 
@@ -102,6 +136,12 @@ def main() -> None:
     p.add_argument("--release_checkpoint", type=Path, required=True)
     p.add_argument("--retreat_checkpoint", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument(
+        "--artifact_lock",
+        type=Path,
+        default=None,
+        help="optional V7 artifact lock that must cover and match all eight policies",
+    )
     p.add_argument(
         "--use_vision", action="store_true",
         help="replace object/support positions in policy observations with RGB-D detections",
@@ -263,6 +303,19 @@ def main() -> None:
     )
     AppLauncher.add_app_launcher_args(p)
     args = p.parse_args()
+    if args.command is None:
+        encoded_command = os.environ.get("STAGE_VLA_COMMAND_UTF8_BASE64")
+        if encoded_command:
+            try:
+                args.command = base64.b64decode(
+                    encoded_command, validate=True
+                ).decode("utf-8")
+            except (binascii.Error, ValueError, UnicodeDecodeError) as exc:
+                p.error(f"invalid STAGE_VLA_COMMAND_UTF8_BASE64: {exc}")
+        else:
+            environment_command = os.environ.get("STAGE_VLA_COMMAND")
+            if environment_command:
+                args.command = environment_command
     try:
         scene_assets = scene_cube_assets(args.scene_cube_count)
     except ValueError as exc:
@@ -429,6 +482,15 @@ def main() -> None:
     missing = [str(path) for path in checkpoints.values() if not path.is_file()]
     if missing:
         raise FileNotFoundError(f"missing checkpoints: {missing}")
+    artifact_lock = args.artifact_lock.resolve() if args.artifact_lock is not None else None
+    expected_checkpoint_hashes = None
+    if artifact_lock is not None:
+        if not artifact_lock.is_file():
+            raise FileNotFoundError(artifact_lock)
+        try:
+            expected_checkpoint_hashes = load_action_checkpoint_hashes(artifact_lock)
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            p.error(f"invalid --artifact_lock: {exc}")
     out = args.output.resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
     demonstration_dir = (
@@ -481,7 +543,7 @@ def main() -> None:
         from stage_vla.data.v4_2_runtime import read_depth_m_batch, read_rgb_u8_batch
         from stage_vla.envs.state_readers import to_torch
         from stage_vla.rl.reach_policy import measure_reach_state, reach_observation, reach_raw_action
-        from stage_vla.rl.v5_skill_contracts import reference_action, skill_success
+        from stage_vla.rl.v5_skill_contracts import reference_action
         from stage_vla.rl.known_size_grasp_vecenv import KnownSizeGraspVecEnv
         from stage_vla.rl.known_size_grasp import pressure_tracking_ok
         from stage_vla.rl.skill_action_safety import (
@@ -497,7 +559,7 @@ def main() -> None:
             profile_from_config,
         )
         from stage_vla.vision import CameraCalibration, CompactColorDepthDetector
-        from tools.stageppo_known_size_grasp_env import make_known_size_grasp_env
+        skill_success = legacy_vectorized_skill_success
 
         size = _load_size(args.config.resolve())
         object_geometry, object_color_rgb = _load_object_metadata(args.config.resolve())
@@ -514,7 +576,7 @@ def main() -> None:
             "v7_multicube_camera" if args.use_vision
             else ("v5_chain_video_camera" if args.video else None)
         )
-        raw = make_known_size_grasp_env(
+        raw = make_legacy_v5_known_size_grasp_env(
             device=args.device, num_envs=args.num_envs, seed=args.seed,
             log_dir=out.parent, known_size=size, effort_limit=args.effort_limit,
             camera_name=camera_name,
@@ -780,7 +842,11 @@ def main() -> None:
             action_checkpoints = {Skill.REACH: reach_checkpoint}
         action_checkpoints.update({Skill(name): path for name, path in checkpoints.items()})
         action_service = (
-            build_torchscript_cube_service(action_checkpoints, device=args.device)
+            build_torchscript_cube_service(
+                action_checkpoints,
+                device=args.device,
+                expected_hashes=expected_checkpoint_hashes,
+            )
             if learned_reach
             else None
         )
@@ -1772,6 +1838,7 @@ def main() -> None:
                 else [item["reach_exit"] for item in relation_results]
             ),
             "checkpoints": {name: str(path) for name, path in checkpoints.items()},
+            "artifact_lock": str(artifact_lock) if artifact_lock is not None else None,
             "reach_checkpoint": str(reach_checkpoint) if reach_checkpoint is not None else None,
             "reach_controller": args.reach_model_type if reach_checkpoint is not None else "geometric_reference",
             "reach_refinement_controller": (

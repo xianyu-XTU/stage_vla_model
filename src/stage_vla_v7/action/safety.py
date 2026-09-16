@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from stage_vla_v7.contracts import RobotAction, Skill
+from stage_vla_v7.interfaces import RobotAction, Skill
 
 
 @dataclass(frozen=True)

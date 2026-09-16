@@ -1,19 +1,32 @@
 # Public interfaces
 
-## Shared contracts
+All canonical cross-module types live under `stage_vla_v7.interfaces`. They use
+dataclasses, tuples, mappings, primitives, and Protocols only. The old
+`stage_vla_v7.contracts` and module-local `interfaces.py` paths re-export these
+types for compatibility.
 
-| Type | Purpose |
+## Contracts
+
+| Contract | Meaning |
 |---|---|
-| `ObjectDetection` | label, XYZ [m], yaw [rad], confidence |
-| `SceneState` | immutable collection of detections plus optional held label |
-| `StackRelation` | object/support semantic relation |
-| `TaskPlan` | one or more relations in validated execution order |
-| `SkillToken` | one skill bound to one relation |
-| `ObjectProfile` | size, mass, geometry, grasp and support properties |
-| `RobotAction` | normalized `[dx, dy, dz, dyaw, grip]` |
-| `ModelDescriptor` | provider identity, version and capabilities |
+| `ObjectDetection` | label, XYZ metres, yaw, confidence, optional feature |
+| `SceneState` | immutable detections and optional held-object label |
+| `StackRelation` | semantic object-on-support relation |
+| `TaskPlan` | validated ordered relations |
+| `Skill` / `SkillToken` | registered Skill and its relation binding |
+| `ObjectProfile` | geometry, size, mass, friction, and capabilities |
+| `RobotObservation` | finite tuple plus explicit schema identity |
+| `RobotAction` | finite `[dx, dy, dz, dyaw, grip]` values |
+| `ModelDescriptor` | learned/provider identity and capabilities |
+| `SimulationModelDescriptor` | backend/entity identity and capabilities |
+| `SimulationObservation` | robot contract plus opaque RGB/depth payloads |
+| `SimulationAction` | RobotAction plus backend control mode |
+| `SimulationState` | episode, step, observation, termination state |
 
-## Vision port
+An Isaac Lab tensor is never a contract. Simulation adapters unwrap tensors
+before core calls and create tensors only after `RobotAction` validation.
+
+## Vision
 
 ```python
 class VisionProvider(Protocol):
@@ -21,11 +34,11 @@ class VisionProvider(Protocol):
     def detect(self, request: VisionRequest) -> VisionResult: ...
 ```
 
-`VisionRequest` carries an opaque RGB/depth frame and calibration metadata.
-`VisionResult` carries a validated `SceneState`. Implementations may be a
-compact CNN, YOLO+RGB-D geometry, a remote service, or an oracle test provider.
+`VisionRequest` owns opaque RGB/depth, frame metadata, and calibration.
+`VisionResult` owns `SceneState`. Vision localizes objects; it does not schedule
+Skills, judge task success, or step a simulator.
 
-## Language port
+## Language
 
 ```python
 class LanguageProvider(Protocol):
@@ -33,11 +46,11 @@ class LanguageProvider(Protocol):
     def interpret(self, request: LanguageRequest) -> LanguageResult: ...
 ```
 
-`LanguageResult` contains only `TaskPlan`. It cannot contain continuous robot
-actions or physical parameters. The current deterministic provider supports
-strict DSL plus constrained Chinese and English commands.
+`LanguageResult` contains only `TaskPlan`. It cannot contain continuous action
+parameters, torques, or joint commands. The deterministic provider supports
+Chinese, English, and stack DSL.
 
-## Action port
+## Action
 
 ```python
 class ActionPolicy(Protocol):
@@ -46,29 +59,46 @@ class ActionPolicy(Protocol):
     def predict(self, request: ActionRequest) -> ActionResult: ...
 ```
 
-`ActionRequest` contains one skill, a numeric observation vector, and explicit
-object/support profiles. `ActionResult` contains one normalized `RobotAction`.
-The `ActionRouter` selects exactly one `ActionBundle` by physical domain.
+`ActionRequest` binds one Skill, one observation, and explicit object/support
+profiles. `ActionResult` contains one `RobotAction`. `ActionRouter` selects
+exactly one registered physical domain; zero or multiple matches fail.
 
-## Orchestration API
-
-```python
-prepared = pipeline.prepare(command="stack red cube on blue cube", frame=frame)
-token = prepared.tokens[0]
-result = pipeline.act(prepared, token, observation, finished=False)
-```
-
-The application owns control-loop timing and terminal-condition evaluation.
-V7 owns semantic binding, skill selection, domain routing and action safety.
-
-## Isaac Lab batch adapter
+## Pipeline
 
 ```python
-source = PipelineActionSource(pipeline, prepared)
-source.bind_relation(0)
-actions = source.action("REACH", observation_batch)
-audit = source.audit()
+prepared = pipeline.prepare(command, frame)
+for token in prepared.tokens:
+    result = pipeline.act(prepared, token, robot_observation)
 ```
 
-The adapter intentionally lives outside the core ports. Torch tensors do not
-cross into contracts, and every row still follows the ordinary V7 action API.
+The application owns timing and lifecycle. Orchestration owns data flow and
+semantic binding, but not model training or physics.
+
+## Simulation
+
+```python
+class SimulationAdapter(Protocol):
+    descriptor: SimulationModelDescriptor
+    def to_vision_request(self, observation): ...
+    def to_robot_observation(self, observation): ...
+    def to_simulation_action(self, action): ...
+
+class SimulationEnvironment(Protocol):
+    descriptor: SimulationModelDescriptor
+    def reset(self, seed=None): ...
+    def observe(self): ...
+    def step(self, action): ...
+    def close(self): ...
+```
+
+The concrete Isaac path is:
+
+```text
+raw RGB-D -> IsaacCameraAdapter -> VisionRequest
+policy tensor row -> IsaacObservationAdapter -> RobotObservation
+StageVLAPipeline -> RobotAction -> IsaacActionAdapter -> tensor/environment
+```
+
+`PipelineActionSource` is located at
+`stage_vla_v7.simulation.isaac_lab.pipeline_action_source`. The old
+`stage_vla_v7.integrations` import is a compatibility re-export.

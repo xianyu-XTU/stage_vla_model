@@ -1,72 +1,108 @@
 # Stage VLA V7
 
-Stage VLA V7 is an auditable vision-language-action stack for Isaac Lab. It
-keeps vision, language, action, and orchestration independent while providing a
-real simulator bridge that routes every learned action through the same V7
-pipeline.
+Stage VLA V7 is an auditable, modular vision-language-action stack. The VLA
+core is independent of Isaac Lab; Isaac Lab is one optional Simulation backend.
+The refactor preserves the existing V7 behavior, the frozen five-parameter
+action convention, V5-trained TorchScript checkpoints, and the
+`--require_v7_chain` acceptance gate.
 
 ```text
-Chinese/English/DSL command -> LanguageService -> TaskPlan
-Isaac Lab RGB-D frame       -> VisionService   -> SceneState
-TaskPlan + SceneState + robot observation
-                             -> StageVLAPipeline.act
-                             -> ActionService / domain router
-                             -> per-skill TorchScript policy
-                             -> safe 5-D RobotAction
-                             -> Isaac Lab adapter
+Chinese / English / DSL            Isaac RGB-D
+            |                           |
+     LanguageService                VisionService
+            |                           |
+         TaskPlan                    SceneState
+             \                         /
+              +--- StageVLAPipeline --+
+                         |
+                 registered SkillToken
+                         |
+             ActionService / domain router
+                         |
+               per-skill parameter policy
+                         |
+        RobotAction[dx, dy, dz, dyaw, grip]
+                         |
+                Simulation adapter
+                         |
+                  Isaac Lab / Franka
 ```
 
-## What is included
+## Canonical modules
 
-- Dependency-free immutable V7 contracts.
-- Deterministic Chinese, English, and stack-DSL language provider.
-- Static, callable, and legacy RGB-D vision adapters.
-- Callable and TorchScript action policies with fail-closed physical routing.
-- Eight-skill stack scheduler: `REACH`, `GRASP`, `LIFT`, `TRANSPORT`,
-  `ALIGN`, `DESCEND`, `RELEASE_STABILIZE`, and `RETREAT`.
-- `PipelineActionSource`, which converts Isaac Lab batches into audited calls
-  to `StageVLAPipeline.act`.
-- The V5 simulator application runtime vendored under `vendor/stage_vla_v5` so
-  the repository contains the complete source needed by the evaluation tool.
-- A frozen one-environment layout and a reproducible physical smoke runner.
+- `interfaces`: dependency-free immutable contracts and Protocols.
+- `vision`: RGB-D providers, preprocessing boundary, and provider registry.
+- `language`: Chinese, English, and stack-DSL parsing plus provider registry.
+- `action`: eight independent Skill definitions, routing, policies, training,
+  evaluation, and safety projection.
+- `orchestration`: task preparation, scheduling, execution context, and audit.
+- `simulation`: robot/object/sensor models, scenes, environments, physics,
+  randomization, and the Isaac Lab adapter.
 
-Model checkpoints, Isaac Sim, and Isaac Lab are runtime artifacts and are not
-committed. Their expected hashes are recorded in `config/artifacts.lock.json`.
+`contracts`, module-local `interfaces.py`, legacy `adapters`, and
+`integrations.isaaclab` remain as compatibility imports. New code should use
+the canonical packages above.
 
-## Unit check
+Simulation models under `simulation/models` describe physical entities such as
+Franka, cubes, and cameras. Learned models live under `vision`, `language`, and
+`action/network`; these are deliberately different concepts.
+
+## Configuration and artifacts
+
+Runtime configuration is split by owner:
+
+```text
+config/vision/       detector and RGB-D configuration
+config/language/     parser/provider configuration
+config/action/       policy bundle, dimensions, and action convention
+config/simulation/   robot, object, sensor, scene, physics, and layout
+config/tasks/        semantic task definitions
+```
+
+Large checkpoints and simulator assets remain outside Git.
+`config/artifacts.lock.json` records logical paths, SHA256, model type, Skill,
+version, observation dimension, action dimension, and training source.
+
+## Unit and compatibility checks
 
 ```powershell
-$env:PYTHONPATH = "E:\stage_vla_v7\src"
-E:\work\IsaacLab\_isaac_sim\python.bat -m pytest E:\stage_vla_v7\tests -q
+$env:PYTHONPATH = (Resolve-Path "src").Path
+E:\work\IsaacLab\_isaac_sim\python.bat -m pytest tests -q
+
+E:\work\IsaacLab\_isaac_sim\python.bat `
+  tools\migration\verify_checkpoint_compatibility.py `
+  --artifact-root E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 `
+  --output evidence\checkpoint_compatibility.json
+
 E:\work\IsaacLab\_isaac_sim\python.bat -m stage_vla_v7 `
   --command "把红色方块放到蓝色方块上"
 ```
 
-## Physical VLA check
+The checkpoint verifier compares the original TorchScript output plus the
+frozen safety projection against the refactored `ActionService` path for all
+eight skills.
+
+## Physical VLA smoke
 
 ```powershell
-E:\stage_vla_v7\scripts\run_v7_smoke.ps1
+scripts\smoke\run_v7_smoke.ps1
 ```
 
-The runner enables `--require_v7_chain`. A result can only claim
-`v7_chain.verified=true` when RGB-D uses the V7 vision service, language
-planning succeeds, all eight prepared skill tokens execute through the V7
-pipeline, no reference skill is selected, and no reference recovery is used.
+The legacy `scripts\run_v7_smoke.ps1` path forwards to this runner. A physical
+result is accepted only when RGB-D uses V7 Vision, language produces a valid
+plan, all eight prepared tokens execute through `ActionService`, no reference
+Skill is selected, no recovery controller runs, and
+`v7_chain.verified=true`.
 
-The verified local run completed 1/1 without a simulator reset. See
-`docs/VALIDATION.md` and `evidence/v7_vla_smoke_seed61081.summary.json`.
+## Documentation
 
-## Layout
+- `ARCHITECTURE.md`: dependency direction and runtime flow.
+- `INTERFACES.md`: public contracts and provider boundaries.
+- `ACTIONS.md`: all eight Skills, policies, dimensions, and terminal rules.
+- `TRAINING.md`: independent BC and retained V5 training adapters.
+- `SIMULATION.md`: supported backend, models, scene, and extension process.
+- `docs/REFACTORING.md`: before/after trees and migration table.
+- `docs/VENDOR_CLASSIFICATION.md`: conservative V5 KEEP/MIGRATE/ADAPT/DELETE audit.
+- `docs/VALIDATION.md`: test, checkpoint, CLI, and physical evidence.
 
-```text
-src/stage_vla_v7/        V7 contracts, services, adapters, orchestration
-tools/                   Isaac Lab evaluation and report tools
-scripts/                 Reproducible Windows runners
-tests/                   Unit and boundary tests
-config/                  Component, artifact, and frozen-layout manifests
-evidence/                Small committed verification records
-vendor/stage_vla_v5/     Source-only migrated simulator runtime
-```
-
-The migrated checkpoints remain V5-trained artifacts. V7 claims orchestration
-and end-to-end integration, not newly trained policy weights or a learned LLM.
+No retraining or control-algorithm change is part of this refactor.

@@ -1,0 +1,23 @@
+{
+  "schema": "stage_vla_v7.simulation.v1",
+  "backend": "isaac-lab",
+  "environment": "red_on_blue",
+  "scene": "stack",
+  "robot": "franka",
+  "objects": {
+    "red_cube": "cube",
+    "blue_cube": "cube",
+    "green_cube": "cube"
+  },
+  "sensors": ["rgb", "depth"],
+  "physics": {
+    "control_mode": "relative_cartesian_5d",
+    "object_mass_kg": 0.05,
+    "cube_size_m": 0.04
+  },
+  "randomization": {
+    "x_range_m": [0.40, 0.58],
+    "y_range_m": [-0.15, 0.15],
+    "minimum_separation_m": 0.09
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "stage_vla_v7.action_bundle.v1",
+  "provider": "v5_generalized_cube_torchscript",
+  "artifact_bundle": "v5_generalized_cube_bc_v1",
+  "control_hz": 20.0,
+  "action_order": ["dx", "dy", "dz", "dyaw", "grip"],
+  "skills": {
+    "REACH": {"artifact": "reach", "observation_dim": 52},
+    "GRASP": {"artifact": "grasp", "observation_dim": 55},
+    "LIFT": {"artifact": "lift", "observation_dim": 55},
+    "TRANSPORT": {"artifact": "transport", "observation_dim": 55},
+    "ALIGN": {"artifact": "align", "observation_dim": 55},
+    "DESCEND": {"artifact": "descend", "observation_dim": 55},
+    "RELEASE_STABILIZE": {"artifact": "release_stabilize", "observation_dim": 55},
+    "RETREAT": {"artifact": "retreat", "observation_dim": 55}
+  },
+  "domain": {
+    "object_geometry": "box",
+    "support_geometry": "box",
+    "size_m": [0.04, 0.04, 0.04],
+    "mass_kg": 0.05
+  }
+}

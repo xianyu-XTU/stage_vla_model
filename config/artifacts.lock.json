@@ -1,15 +1,127 @@
 {
-  "schema": "stage_vla_v7.external_artifacts.v1",
+  "schema": "stage_vla_v7.external_artifacts.v2",
   "bundle": "v5_generalized_cube_bc_v1",
+  "external_root_env": "STAGE_VLA_ARTIFACT_ROOT",
   "artifacts": {
-    "reach": {"bytes": 231122, "sha256": "582CCC25F4FB6468547029F68DF7A8B4B11737E3803DBDF6E88248B24328C768"},
-    "grasp": {"bytes": 236758, "sha256": "F11179EE4F24B100DEDA6D1E621139977FA521D902DEB63A9D8468A6D067280F"},
-    "lift": {"bytes": 236758, "sha256": "568ED95D434076677E9B46E10573D32426F8250566DDE23936D231B1FD52A165"},
-    "transport": {"bytes": 236438, "sha256": "099E84DD6766955CBFC1CCE9D967733DC3D861AFAEF3890BA96C6B0F279FDF86"},
-    "align": {"bytes": 238188, "sha256": "E6868719E82B641E6A993EC40564297A4AC29D5113F018F43BFE189C499262D3"},
-    "descend": {"bytes": 29128, "sha256": "A561E5D4AF62ECFD554F181C3A947FDE99DB41148C7168C23F72FFC43A6C3326"},
-    "release_stabilize": {"bytes": 33416, "sha256": "8808F91902F23FE6F32F2E1C3F56A9715503BE978BFC05DB44368FAD37C5DC00"},
-    "retreat": {"bytes": 19528, "sha256": "1F61EB0D7DC3CA479CA13AFF225F8026DE4C53969119B4A3E0846D2768452A3C"},
-    "rgbd_calibration": {"bytes": 1629, "sha256": "CD0DE5CE944A61EA8F4161032B04D205F3A7AB0B484F3352A140621C2B2FDF29"}
+    "reach": {
+      "logical_name": "action.reach.policy",
+      "logical_path": "reach/policy.ts",
+      "bytes": 231122,
+      "sha256": "582CCC25F4FB6468547029F68DF7A8B4B11737E3803DBDF6E88248B24328C768",
+      "model_type": "torchscript_parameter_policy",
+      "skill": "REACH",
+      "version": "v5-generalized-cube-v1",
+      "observation_dim": 52,
+      "action_dim": 5,
+      "training_source": "v5_generalized_cube_bc_v1"
+    },
+    "grasp": {
+      "logical_name": "action.grasp.policy",
+      "logical_path": "grasp/policy.ts",
+      "bytes": 236758,
+      "sha256": "F11179EE4F24B100DEDA6D1E621139977FA521D902DEB63A9D8468A6D067280F",
+      "model_type": "torchscript_parameter_policy",
+      "skill": "GRASP",
+      "version": "v5-generalized-cube-v1",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "training_source": "v5_generalized_cube_bc_v1"
+    },
+    "lift": {
+      "logical_name": "action.lift.policy",
+      "logical_path": "lift/policy.ts",
+      "bytes": 236758,
+      "sha256": "568ED95D434076677E9B46E10573D32426F8250566DDE23936D231B1FD52A165",
+      "model_type": "torchscript_parameter_policy",
+      "skill": "LIFT",
+      "version": "v5-generalized-cube-v1",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "training_source": "v5_generalized_cube_bc_v1"
+    },
+    "transport": {
+      "logical_name": "action.transport.policy",
+      "logical_path": "transport/policy.ts",
+      "bytes": 236438,
+      "sha256": "099E84DD6766955CBFC1CCE9D967733DC3D861AFAEF3890BA96C6B0F279FDF86",
+      "model_type": "torchscript_parameter_policy",
+      "skill": "TRANSPORT",
+      "version": "v5-generalized-cube-v1",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "training_source": "v5_generalized_cube_bc_v1"
+    },
+    "align": {
+      "logical_name": "action.align.policy",
+      "logical_path": "align/policy.ts",
+      "bytes": 238188,
+      "sha256": "E6868719E82B641E6A993EC40564297A4AC29D5113F018F43BFE189C499262D3",
+      "model_type": "torchscript_parameter_policy",
+      "skill": "ALIGN",
+      "version": "v5-generalized-cube-v1",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "training_source": "v5_generalized_cube_bc_v1"
+    },
+    "descend": {
+      "logical_name": "action.descend.policy",
+      "logical_path": "descend/policy.ts",
+      "bytes": 29128,
+      "sha256": "A561E5D4AF62ECFD554F181C3A947FDE99DB41148C7168C23F72FFC43A6C3326",
+      "model_type": "torchscript_parameter_policy",
+      "skill": "DESCEND",
+      "version": "v5-generalized-cube-v1",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "training_source": "v5_generalized_cube_bc_v1"
+    },
+    "release_stabilize": {
+      "logical_name": "action.release_stabilize.policy",
+      "logical_path": "release_stabilize/policy.ts",
+      "bytes": 33416,
+      "sha256": "8808F91902F23FE6F32F2E1C3F56A9715503BE978BFC05DB44368FAD37C5DC00",
+      "model_type": "torchscript_parameter_policy",
+      "skill": "RELEASE_STABILIZE",
+      "version": "v5-generalized-cube-v1",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "training_source": "v5_generalized_cube_bc_v1"
+    },
+    "retreat": {
+      "logical_name": "action.retreat.policy",
+      "logical_path": "retreat/policy.ts",
+      "bytes": 19528,
+      "sha256": "1F61EB0D7DC3CA479CA13AFF225F8026DE4C53969119B4A3E0846D2768452A3C",
+      "model_type": "torchscript_parameter_policy",
+      "skill": "RETREAT",
+      "version": "v5-generalized-cube-v1",
+      "observation_dim": 55,
+      "action_dim": 5,
+      "training_source": "v5_generalized_cube_bc_v1"
+    },
+    "vision_detector": {
+      "logical_name": "vision.cube_segmentation.detector",
+      "logical_path": "yolo26n_cube_seg_pilot_v2/weights/best.pt",
+      "bytes": 6489309,
+      "sha256": "74593904E1246833B6D2D54130C3A3CFFB78999A1C1BCDCA68AA526D4946E916",
+      "model_type": "yolo_segmentation",
+      "skill": null,
+      "version": "yolo26n_cube_seg_pilot_v2",
+      "observation_dim": null,
+      "action_dim": null,
+      "training_source": "cube_seg_pilot_v2"
+    },
+    "rgbd_calibration": {
+      "logical_name": "vision.rgbd.calibration",
+      "logical_path": "vision_rgbd_mapping_calibration_train_20260910.json",
+      "bytes": 1629,
+      "sha256": "CD0DE5CE944A61EA8F4161032B04D205F3A7AB0B484F3352A140621C2B2FDF29",
+      "model_type": "camera_calibration",
+      "skill": null,
+      "version": "2026-09-10",
+      "observation_dim": null,
+      "action_dim": null,
+      "training_source": "rgbd_mapping_calibration_train"
+    }
   }
 }

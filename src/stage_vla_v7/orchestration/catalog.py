@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from stage_vla_v7.contracts import ObjectProfile
+from stage_vla_v7.interfaces import ObjectProfile
 
 
 class ObjectCatalog:

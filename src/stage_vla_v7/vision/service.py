@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from stage_vla_v7.contracts import ProviderError
-
-from .interfaces import VisionProvider, VisionRequest, VisionResult
+from stage_vla_v7.interfaces import ProviderError, VisionProvider, VisionRequest, VisionResult
 
 
 class VisionService:

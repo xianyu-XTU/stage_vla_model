@@ -1,0 +1,7 @@
+{
+  "schema": "stage_vla_v7.language.v1",
+  "provider": "deterministic",
+  "version": "1",
+  "languages": ["zh", "en", "stack_dsl"],
+  "aliases": {}
+}
