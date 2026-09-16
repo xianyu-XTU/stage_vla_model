@@ -139,7 +139,7 @@ The audit actions were applied without changing the eight Skills, five-value
 - Direct V5 imports remain for 19 unique module paths, so V5 runtime migration
   is PARTIAL. See `docs/VENDOR_CLASSIFICATION.md` for the exact list.
 
-Post-change evidence is 95 passing tests, 8/8 checkpoint comparisons with
+Post-change evidence is 96 passing tests, 8/8 checkpoint comparisons with
 maximum error `0.0`, a passing post-factory RGB-D physical run, and a passing
 headless RGB-D + Observer MP4 run with 730 Vision calls, 768 video frames,
 8/8 Skills, 7/7 state-exact handoffs, no reference/recovery calls, and

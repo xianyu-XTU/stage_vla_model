@@ -14,7 +14,7 @@ Validation date: 2026-09-16
 ## Automated tests
 
 ```text
-95 passed
+96 passed
 ```
 
 Coverage includes dependency-free contracts, strict import boundaries,

@@ -584,9 +584,7 @@ def main() -> None:
             raise FileExistsError(f"refusing to overwrite non-empty DAgger data: {dagger_dir}")
         dagger_dir.mkdir(parents=True, exist_ok=True)
     video_path = (args.video_path.resolve() if args.video_path is not None
-                  else out.with_suffix(".mp4"))
-    if args.video:
-        video_path.parent.mkdir(parents=True, exist_ok=True)
+                   else out.with_suffix(".mp4"))
 
     object_positions = None
     if args.random_xy:

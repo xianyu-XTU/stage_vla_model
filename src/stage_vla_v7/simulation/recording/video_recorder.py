@@ -56,8 +56,8 @@ class VideoRecorder:
         if self._started:
             raise RuntimeError("VideoRecorder.start() may only be called once")
         self._started = True
-        self.config.path.parent.mkdir(parents=True, exist_ok=True)
         try:
+            self.config.path.parent.mkdir(parents=True, exist_ok=True)
             factory = self._writer_factory
             if factory is None:
                 import imageio.v2 as imageio

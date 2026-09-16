@@ -29,7 +29,7 @@ Updated: 2026-09-16
 
 ## Verified
 
-- 95 unit, boundary, compatibility, Simulation, and integration tests pass
+- 96 unit, boundary, compatibility, Simulation, and integration tests pass
   under Isaac Sim Python 3.12.13.
 - `compileall` passes for `src`, `tests`, `scripts`, and `tools`.
 - All 145 package modules import under the Isaac Python validation environment

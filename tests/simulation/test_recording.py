@@ -188,3 +188,24 @@ def test_recording_best_effort_absorbs_upstream_capture_error(tmp_path: Path) ->
     result = recorder.stop()
     assert not result.completed
     assert "invalid observer payload" in (result.error or "")
+
+
+def test_recording_best_effort_absorbs_output_directory_error(tmp_path: Path) -> None:
+    blocker = tmp_path / "not-a-directory"
+    blocker.write_bytes(b"keep-existing-file")
+    recorder = VideoRecorder(
+        RecordingConfig(
+            blocker / "episode.mp4",
+            width=64,
+            height=48,
+            fps=20.0,
+            strict=False,
+        ),
+    )
+    with pytest.warns(RuntimeWarning, match="observer recording disabled"):
+        recorder.start()
+    result = recorder.stop()
+    assert not recorder.active
+    assert not result.completed
+    assert result.error
+    assert blocker.read_bytes() == b"keep-existing-file"
