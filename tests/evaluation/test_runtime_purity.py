@@ -6,10 +6,15 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 
 from tools.evaluation.audit import verify_v7_chain
+from tools.evaluation.provenance import (
+    capture_source_snapshot,
+    collect_evidence_provenance,
+)
 from tools.evaluation.runtime_purity import (
     audit_runtime_purity,
     install_v5_import_blocker,
@@ -91,6 +96,87 @@ def _clean_chain_args() -> dict[str, object]:
             "verified": True,
         },
     }
+
+
+def _git(repository: Path, *arguments: str) -> str:
+    completed = subprocess.run(
+        ["git", "-C", str(repository), *arguments],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    return completed.stdout.strip()
+
+
+def test_source_provenance_preserves_clean_pre_run_snapshot(tmp_path: Path) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    _git(repository, "init", "--quiet")
+    _git(repository, "config", "user.email", "runtime-purity@example.invalid")
+    _git(repository, "config", "user.name", "Runtime Purity Test")
+    tracked = repository / "tracked.txt"
+    tracked.write_text("clean\n", encoding="utf-8")
+    _git(repository, "add", "tracked.txt")
+    _git(repository, "commit", "--quiet", "--no-gpg-sign", "-m", "baseline")
+
+    source_snapshot = capture_source_snapshot(repository)
+    tracked.write_text("dirty after launch\n", encoding="utf-8")
+    provenance = collect_evidence_provenance(
+        SimpleNamespace(reach_checkpoint=None, checkpoints={}, artifact_lock=None),
+        repository_root=repository,
+        source_snapshot=source_snapshot,
+    )
+
+    assert provenance["source_commit"] == _git(repository, "rev-parse", "HEAD")
+    assert provenance["source_worktree_clean_before_run"] is True
+    assert provenance["source_clean_before_run"] is True
+    assert provenance["source_git_status_before_run"] == []
+    assert provenance["git_worktree_dirty"] is True
+    assert provenance["git_status"] == [" M tracked.txt"]
+
+
+def test_episode_runner_captures_source_before_isaac_launch() -> None:
+    source = (ROOT / "tools" / "evaluation" / "episode_runner.py").read_text(
+        encoding="utf-8"
+    )
+    capture = "source_snapshot = capture_source_snapshot(V7_ROOT)"
+    launch = "app = app_launcher_class(args).app"
+    assert source.index(capture) < source.index(launch)
+    assert source.count("source_snapshot=source_snapshot") == 3
+
+
+def test_runtime_purity_export_enables_blocker_and_records_source(tmp_path: Path) -> None:
+    output = tmp_path / "runtime_purity.json"
+    environment = os.environ.copy()
+    environment.pop("STAGE_VLA_V5_ROOT", None)
+    environment["PYTHONPATH"] = ""
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "tools.evaluation.export_runtime_purity",
+            "--output",
+            str(output),
+            "--require-pure",
+        ],
+        cwd=ROOT,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["source_commit"] == _git(ROOT, "rev-parse", "HEAD")
+    assert payload["source_worktree_clean_before_run"] is (
+        not payload["source_git_status_before_run"]
+    )
+    assert payload["source_clean_before_run"] is (
+        payload["source_worktree_clean_before_run"]
+    )
+    assert payload["runtime_purity"]["import_blocker_enabled"] is True
+    assert payload["runtime_purity"]["verified"] is True
 
 
 def test_formal_runtime_has_no_v5_imports() -> None:

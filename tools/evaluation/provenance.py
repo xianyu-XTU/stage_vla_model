@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 from pathlib import Path
@@ -30,16 +31,51 @@ def _git(repository_root: Path, *arguments: str) -> str:
         text=True,
         encoding="utf-8",
     )
-    return completed.stdout.strip()
+    return completed.stdout.rstrip()
+
+
+@dataclass(frozen=True)
+class SourceSnapshot:
+    """Git identity captured before an evaluator or evidence tool starts work."""
+
+    commit: str
+    worktree_clean: bool
+    git_status: tuple[str, ...]
+    captured_at_utc: str
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "source_commit": self.commit,
+            "source_worktree_clean_before_run": self.worktree_clean,
+            "source_clean_before_run": self.worktree_clean,
+            "source_git_status_before_run": list(self.git_status),
+            "source_snapshot_at_utc": self.captured_at_utc,
+        }
+
+
+def capture_source_snapshot(repository_root: Path) -> SourceSnapshot:
+    """Capture source provenance before runtime outputs can dirty the tree."""
+    root = Path(repository_root).resolve()
+    status_lines = tuple(
+        line for line in _git(root, "status", "--porcelain=v1").splitlines() if line
+    )
+    return SourceSnapshot(
+        commit=_git(root, "rev-parse", "HEAD"),
+        worktree_clean=not status_lines,
+        git_status=status_lines,
+        captured_at_utc=datetime.now(timezone.utc).isoformat(),
+    )
 
 
 def collect_evidence_provenance(
     plan: "EvaluationPlan",
     *,
     repository_root: Path,
+    source_snapshot: SourceSnapshot | None = None,
 ) -> dict[str, object]:
     """Record code, lock, and actual checkpoint identities for one result."""
     root = Path(repository_root).resolve()
+    source = source_snapshot or capture_source_snapshot(root)
     commit = _git(root, "rev-parse", "HEAD")
     status_lines = tuple(
         line for line in _git(root, "status", "--porcelain=v1").splitlines() if line
@@ -64,6 +100,7 @@ def collect_evidence_provenance(
         }
     return {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        **source.as_dict(),
         "git_commit": commit,
         "git_worktree_dirty": bool(status_lines),
         "git_status": list(status_lines),
@@ -72,4 +109,8 @@ def collect_evidence_provenance(
     }
 
 
-__all__ = ["collect_evidence_provenance"]
+__all__ = [
+    "SourceSnapshot",
+    "capture_source_snapshot",
+    "collect_evidence_provenance",
+]

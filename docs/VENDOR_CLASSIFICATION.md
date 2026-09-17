@@ -1,7 +1,8 @@
 # V5 vendor classification
 
-Phase-3 status: **runtime migration complete for the locked cube-policy path**.
-No vendor file is classified for deletion.
+Phase-3 implementation status: **runtime migration complete for the locked
+cube-policy path**. Clean-HEAD closeout verification is pending. No vendor file
+is classified for deletion.
 
 ## Current classification
 
@@ -24,8 +25,8 @@ No vendor file is classified for deletion.
   regression-only oracle, outside runtime.
 - Vendor root insertion by evaluation bootstrap: 0; the bootstrap exposes only
   `repo/src`.
-- Isolated physical smoke: active V5 import blocker, 0 loaded V5 modules, and
-  no exposed V5 package path.
+- Historical isolated physical smoke: active V5 import blocker, 0 loaded V5
+  modules, and no exposed V5 package path, with dirty-worktree provenance.
 
 The module-level migration targets and parity/smoke evidence are recorded in
 `docs/VENDOR_MIGRATION_PHASE3.md`.

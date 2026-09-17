@@ -7,8 +7,9 @@ current Python imports, import state, and physical evaluator call graph.
 
 ## Result
 
-Stage VLA V7 Phase 3 runtime isolation is complete for the locked cube-policy
-physical path:
+Stage VLA V7 Phase 3 runtime-isolation implementation is complete for the
+locked cube-policy physical path. The committed physical evidence was produced
+from a dirty worktree, so clean-HEAD closeout verification is pending:
 
 - formal `src/stage_vla_v7` V5 Python imports: **0**;
 - formal `tools/evaluation` V5 Python imports: **0**;
@@ -23,8 +24,8 @@ physical path:
   and historical training;
 - the eight V5-trained checkpoints remain external artifacts and were not
   retrained or rewritten;
-- a newly generated, V5-isolated strict Vision + Video physical smoke passed
-  with runtime purity and the V7 chain both verified.
+- the historical V5-isolated strict Vision + Video physical smoke passed with
+  runtime purity and the V7 chain both verified, but does not prove clean HEAD.
 
 `tools/evaluation/bootstrap.py` now exposes only `repo/src`. It does not define
 `V5_ROOT`, inspect `STAGE_VLA_V5_ROOT`, or add `vendor/stage_vla_v5` to
@@ -137,17 +138,17 @@ mutation of these protected fields.
 | Vendor path exposed at runtime | **NO** |
 | Runtime purity | **PASS** |
 | V5 import blocker | **ENABLED** |
-| V5-isolated physical smoke | **PASS** |
+| Historical V5-isolated physical smoke | **PASS**, dirty-worktree provenance |
+| Clean-HEAD V5-isolated physical smoke | **PENDING** |
 
-Final regression evidence:
+Historical regression evidence pending clean-HEAD replacement:
 
 - `288` tests passed, `0` failed, `0` skipped.
 - `evidence/phase3_closeout_checkpoint_compatibility.json`: all eight checkpoints,
   action dimension 5, maximum absolute error `0.0`.
 - `evidence/phase3_closeout_runtime_purity.json`: a standalone pre-runtime
-  snapshot with no loaded V5 module, no exposed V5 path, and `verified=true`;
-  its blocker field is false because this audit-only command does not launch a
-  physical evaluation.
+  snapshot with no loaded V5 module and no exposed V5 path; it predates the
+  Recovery requirement that the standalone snapshot enable the blocker.
 - `evidence/phase3_closeout_seed61081.summary.json`: strict Vision, 730 valid
   calls, zero invalid frames, zero oracle fallback, no reference/recovery,
   `runtime_purity.import_blocker_enabled=true`,
@@ -165,6 +166,6 @@ allowed. A V5 formal Python runtime dependency is forbidden.
 The smoke proves preserved wiring and one locked seed. It is not a 20/50/100
 seed success-rate claim and does not extend the trained cube policy domain.
 
-**PHASE 3 COMPLETE**
+**PHASE 3 CLOSEOUT RECOVERY VERIFICATION PENDING**
 
-`READY_FOR_PHASE4 = true`
+`READY_FOR_PHASE4 = false`

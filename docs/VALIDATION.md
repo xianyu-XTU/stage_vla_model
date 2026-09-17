@@ -2,6 +2,11 @@
 
 Validation date: 2026-09-17
 
+Recovery status: the results below are the historical dirty-worktree closeout
+record. Clean-HEAD tests, checkpoint verification, physical smoke, and video
+decode are pending and will be recorded under distinct `clean_head` evidence
+names before Phase 3 is declared complete.
+
 ## Environment
 
 - Isaac Lab root: `E:\work\IsaacLab`
@@ -72,7 +77,7 @@ and compared direct TorchScript plus frozen safety with the V7
 The machine-readable result is
 `evidence/phase3_closeout_checkpoint_compatibility.json`.
 
-## Final physical smoke
+## Historical physical smoke
 
 The final run used the frozen seed-61081 layout, strict RGB-D Vision, all eight
 real policies, the required V7 audit gate, the Observer camera, strict MP4
@@ -145,10 +150,9 @@ E:\work\IsaacLab\_isaac_sim\python.bat tools\migration\verify_checkpoint_compati
 E:\work\IsaacLab\_isaac_sim\python.bat -m tools.evaluation.export_runtime_purity --output evidence\phase3_closeout_runtime_purity.json --require-pure
 ```
 
-The standalone snapshot audits module/path purity without launching the
-evaluator, so it records `import_blocker_enabled=false`. The physical smoke
-summary is the authoritative guard evidence and records the blocker as enabled
-for the complete run.
+The Recovery exporter installs the same V5 blocker used by the physical
+evaluator, so the replacement standalone snapshot must record
+`import_blocker_enabled=true`.
 
 ## Claim boundary
 
@@ -159,5 +163,5 @@ non-cube policy support, fully visual proprioception/contact feedback, or a
 multi-seed success rate.
 
 V5-trained checkpoints and retained historical/regression source are allowed;
-a V5 formal runtime dependency is not. All closeout gates pass, so
-`READY_FOR_PHASE4 = true`.
+a V5 formal runtime dependency is not. Clean-HEAD closeout verification is
+pending, so `READY_FOR_PHASE4 = false`.

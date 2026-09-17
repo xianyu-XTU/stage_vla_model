@@ -6,21 +6,10 @@ import argparse
 from datetime import datetime, timezone
 import json
 from pathlib import Path
-import subprocess
 
 from .bootstrap import V7_ROOT
-from .runtime_purity import audit_runtime_purity
-
-
-def _git_commit() -> str:
-    completed = subprocess.run(
-        ["git", "-C", str(V7_ROOT), "rev-parse", "HEAD"],
-        check=True,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-    )
-    return completed.stdout.strip()
+from .provenance import capture_source_snapshot
+from .runtime_purity import audit_runtime_purity, install_v5_import_blocker
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -29,11 +18,16 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--require-pure", action="store_true")
     args = parser.parse_args(argv)
 
+    source_snapshot = capture_source_snapshot(V7_ROOT)
+    install_v5_import_blocker()
     purity = audit_runtime_purity().as_dict()
     payload = {
         "schema": "stage_vla_v7.phase3_runtime_purity.v1",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-        "git_commit": _git_commit(),
+        **source_snapshot.as_dict(),
+        "git_commit": source_snapshot.commit,
+        "git_worktree_dirty": not source_snapshot.worktree_clean,
+        "git_status": list(source_snapshot.git_status),
         "runtime_purity": purity,
     }
     output = args.output.resolve()

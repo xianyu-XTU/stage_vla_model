@@ -15,7 +15,7 @@ from .cli import EvaluationPlan
 from .constants import ASSET_TO_VISION_LABEL, EXTRA_CUBE_COLORS
 from .data_collection import SkillDemonstrationBuffer, write_data_manifests
 from .debug_oracle import read_debug_oracle_local_positions
-from .provenance import collect_evidence_provenance
+from .provenance import capture_source_snapshot, collect_evidence_provenance
 from .result_writer import ResultContext, build_evaluation_result, write_json_result
 from .runtime_purity import audit_runtime_purity, install_v5_import_blocker
 from .task_evaluator import evaluate_task
@@ -63,6 +63,7 @@ from stage_vla_v7.vision import (
 
 
 def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
+    source_snapshot = capture_source_snapshot(V7_ROOT)
     args = plan.args
     scene_assets = plan.scene_assets
     skill_translation_limits = plan.skill_translation_limits
@@ -90,7 +91,11 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             "status": "failed",
             "v7_chain": {"verified": False, "required": bool(args.require_v7_chain)},
             "runtime_purity": audit_runtime_purity().as_dict(),
-            "provenance": collect_evidence_provenance(plan, repository_root=V7_ROOT),
+            "provenance": collect_evidence_provenance(
+                plan,
+                repository_root=V7_ROOT,
+                source_snapshot=source_snapshot,
+            ),
         })
         raise
 
@@ -594,7 +599,11 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             v7_audit=v7_audit,
             v7_chain_verified=v7_chain_verified,
             runtime_purity=runtime_purity,
-            provenance=collect_evidence_provenance(plan, repository_root=V7_ROOT),
+            provenance=collect_evidence_provenance(
+                plan,
+                repository_root=V7_ROOT,
+                source_snapshot=source_snapshot,
+            ),
             physical_success=task_evaluation.passed,
             reference_skill_calls=reference_skill_calls,
             recovery_calls=recovery_calls,
@@ -634,7 +643,11 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
                 "command": command_text,
             },
             "runtime_purity": runtime_purity,
-            "provenance": collect_evidence_provenance(plan, repository_root=V7_ROOT),
+            "provenance": collect_evidence_provenance(
+                plan,
+                repository_root=V7_ROOT,
+                source_snapshot=source_snapshot,
+            ),
             "reference_skill_calls": int(
                 getattr(output_module, "reference_call_count", 0)
             ),

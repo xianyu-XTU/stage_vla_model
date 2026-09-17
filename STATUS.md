@@ -29,7 +29,12 @@ Updated: 2026-09-17
   active `stage_vla` import blocker during physical evaluation, and a
   fail-closed runtime-purity condition in `--require_v7_chain`.
 
-## Phase 3 verification
+## Phase 3 historical verification
+
+The results below came from the successful closeout run, but its summary
+records a dirty source worktree at commit `94006de`. They are recovery inputs,
+not final clean-HEAD proof. The implementation is restored on `main`; a new
+clean-HEAD physical verification is pending.
 
 - Full suite: **288 passed, 0 failed, 0 skipped** under `E:\work\IsaacLab` Isaac Sim Python.
 - `compileall`: `src`, `tests`, `scripts`, and `tools` pass.
@@ -51,7 +56,7 @@ Updated: 2026-09-17
   pixel SHA-256
   `97944f34b5adaed6642e07d13f082730eaa16f8e0c8d77980d83c3b419ec6fec`.
 
-## Evidence
+## Historical evidence
 
 - `docs/VENDOR_MIGRATION_PHASE3.md`
 - `PHASE3_CLOSEOUT_AUDIT.md`
@@ -79,7 +84,8 @@ Updated: 2026-09-17
 | Loaded V5 modules | PASS | 0 in the isolated physical result |
 | Physical V5 import blocker | PASS | enabled for the complete physical run |
 | Canonical action-evaluation V5 adapter | PASS | absent from module and `__all__` |
-| V5-isolated physical smoke | PASS | runtime purity and V7 chain both verified |
+| Historical V5-isolated physical smoke | PASS | runtime purity and V7 chain verified in a dirty worktree |
+| Clean-HEAD V5-isolated physical smoke | PENDING | must be regenerated after source commit |
 
 ## Current limitations
 
@@ -101,6 +107,6 @@ V5-trained checkpoints are allowed. V5 historical/regression source is
 allowed. A V5 formal Python runtime dependency is forbidden and is now absent
 from the locked physical path.
 
-**PHASE 3 COMPLETE**
+**PHASE 3 CLOSEOUT RECOVERY VERIFICATION PENDING**
 
-`READY_FOR_PHASE4 = true`
+`READY_FOR_PHASE4 = false`

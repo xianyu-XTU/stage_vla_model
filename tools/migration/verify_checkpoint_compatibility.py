@@ -8,15 +8,17 @@ import hashlib
 import json
 import math
 from pathlib import Path
-import subprocess
 import sys
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_ROOT = REPOSITORY_ROOT / "src"
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
 if str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
 
+from tools.evaluation.provenance import capture_source_snapshot  # noqa: E402
 from stage_vla_v7.action import (  # noqa: E402
     ActionRouter,
     ActionService,
@@ -39,17 +41,6 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest().upper()
 
 
-def _git_commit() -> str:
-    completed = subprocess.run(
-        ["git", "-C", str(REPOSITORY_ROOT), "rev-parse", "HEAD"],
-        check=True,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-    )
-    return completed.stdout.strip()
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifact-root", type=Path, required=True)
@@ -62,6 +53,7 @@ def main() -> None:
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
 
+    source_snapshot = capture_source_snapshot(REPOSITORY_ROOT)
     import torch
 
     lock = json.loads(args.lock.resolve().read_text(encoding="utf-8"))
@@ -127,7 +119,10 @@ def main() -> None:
     report = {
         "schema": "stage_vla_v7.checkpoint_compatibility.v1",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-        "git_commit": _git_commit(),
+        **source_snapshot.as_dict(),
+        "git_commit": source_snapshot.commit,
+        "git_worktree_dirty": not source_snapshot.worktree_clean,
+        "git_status": list(source_snapshot.git_status),
         "artifact_bundle": lock["bundle"],
         "artifact_lock": {
             "path": str(args.lock.resolve()),

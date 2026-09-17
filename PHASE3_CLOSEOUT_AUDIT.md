@@ -1,5 +1,13 @@
 # Phase 3 Closeout Audit
 
+## Recovery notice
+
+The original final-result section below records a successful run from a dirty
+worktree at commit `94006de`. It is retained as historical recovery evidence,
+not clean-HEAD closeout proof. Current implementation recovery is complete;
+clean-HEAD physical verification is pending. See
+`CURRENT_MAIN_VS_CLOSEOUT_EVIDENCE_AUDIT.md`.
+
 Audit baseline: `main` at `94006de24ecdcb4725394f24edf36d8d9b4c23c1`
 (`Complete native V7 physical runtime migration`).
 
@@ -164,7 +172,7 @@ be updated with final evidence only after all code, import guards, checkpoint
 compatibility, physical smoke, video, full tests, and `compileall` have been
 verified.
 
-## Final closeout result
+## Historical dirty-worktree closeout result
 
 The three baseline defects were resolved without deleting the vendor tree,
 retraining a policy, widening the 4 cm / 0.05 kg rigid-cube domain, enabling a
@@ -218,7 +226,7 @@ reference/recovery controller, or entering Phase 4:
 | Tests | **288 passed / 0 failed / 0 skipped** |
 | `compileall` | **PASS** |
 
-Closeout evidence:
+Historical closeout evidence:
 
 - `evidence/phase3_closeout_runtime_purity.json`
 - `evidence/phase3_closeout_checkpoint_compatibility.json`
@@ -237,9 +245,9 @@ both purity and V7-chain gates verified. The MP4 independently decoded all
 V5-trained checkpoints remain allowed. V5 historical/regression source remains
 allowed. V5 formal Python runtime dependency is forbidden and absent.
 
-**PHASE 3 COMPLETE**
+**PHASE 3 CLOSEOUT RECOVERY VERIFICATION PENDING**
 
-`READY_FOR_PHASE4 = true`
+`READY_FOR_PHASE4 = false`
 
 ## Files changed by the closeout
 
