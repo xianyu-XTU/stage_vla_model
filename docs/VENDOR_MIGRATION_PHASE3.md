@@ -2,14 +2,16 @@
 
 Closeout baseline: `main` at
 `94006de24ecdcb4725394f24edf36d8d9b4c23c1`.
+Clean-HEAD Recovery source:
+`0b4060423fa226a4bb428a40b6b4961706359c12`.
 Final audit date: 2026-09-17. The inventory below was regenerated from the
 current Python imports, import state, and physical evaluator call graph.
 
 ## Result
 
 Stage VLA V7 Phase 3 runtime-isolation implementation is complete for the
-locked cube-policy physical path. The committed physical evidence was produced
-from a dirty worktree, so clean-HEAD closeout verification is pending:
+locked cube-policy physical path. Recovery verification passed from a clean
+source commit:
 
 - formal `src/stage_vla_v7` V5 Python imports: **0**;
 - formal `tools/evaluation` V5 Python imports: **0**;
@@ -24,8 +26,8 @@ from a dirty worktree, so clean-HEAD closeout verification is pending:
   and historical training;
 - the eight V5-trained checkpoints remain external artifacts and were not
   retrained or rewritten;
-- the historical V5-isolated strict Vision + Video physical smoke passed with
-  runtime purity and the V7 chain both verified, but does not prove clean HEAD.
+- the clean-HEAD V5-isolated strict Vision + Video physical smoke passed with
+  runtime purity and the V7 chain both verified.
 
 `tools/evaluation/bootstrap.py` now exposes only `repo/src`. It does not define
 `V5_ROOT`, inspect `STAGE_VLA_V5_ROOT`, or add `vendor/stage_vla_v5` to
@@ -139,26 +141,26 @@ mutation of these protected fields.
 | Runtime purity | **PASS** |
 | V5 import blocker | **ENABLED** |
 | Historical V5-isolated physical smoke | **PASS**, dirty-worktree provenance |
-| Clean-HEAD V5-isolated physical smoke | **PENDING** |
+| Clean-HEAD V5-isolated physical smoke | **PASS** |
 
-Historical regression evidence pending clean-HEAD replacement:
+Clean-HEAD regression evidence:
 
-- `288` tests passed, `0` failed, `0` skipped.
-- `evidence/phase3_closeout_checkpoint_compatibility.json`: all eight checkpoints,
+- `291` tests passed, `0` failed, `0` skipped.
+- `evidence/phase3_closeout_clean_head_checkpoint_compatibility.json`: all eight checkpoints,
   action dimension 5, maximum absolute error `0.0`.
-- `evidence/phase3_closeout_runtime_purity.json`: a standalone pre-runtime
-  snapshot with no loaded V5 module and no exposed V5 path; it predates the
-  Recovery requirement that the standalone snapshot enable the blocker.
-- `evidence/phase3_closeout_seed61081.summary.json`: strict Vision, 730 valid
+- `evidence/phase3_closeout_clean_head_runtime_purity.json`: a clean-source
+  snapshot with no loaded V5 module, no exposed V5 path, and the blocker enabled.
+- `evidence/phase3_closeout_clean_head_seed61081.summary.json`: strict Vision, 729 valid
   calls, zero invalid frames, zero oracle fallback, no reference/recovery,
   `runtime_purity.import_blocker_enabled=true`,
   `runtime_purity.verified=true`, and `v7_chain.verified=true`.
-- `evidence/phase3_closeout_seed61081.mp4`: independently decoded `768/768`
+- `evidence/phase3_closeout_clean_head_seed61081.mp4`: independently decoded `767/767`
   nonblank frames at 640x480; decoded pixel SHA-256
-  `97944f34b5adaed6642e07d13f082730eaa16f8e0c8d77980d83c3b419ec6fec`.
+  `8345c24593cfa76d984420f828ab91946043881fae0a6f167b7398972a6898e6`.
 
-The result JSON records the baseline Git commit, UTC timestamp, working-tree
-state, artifact-lock path and SHA-256, and all eight actual checkpoint hashes.
+The clean-HEAD result JSON records the source commit, pre-run and end-of-run
+worktree state, UTC timestamps, artifact-lock path and SHA-256, and all eight
+actual checkpoint hashes.
 
 V5-trained checkpoints are allowed. V5 historical/regression source is
 allowed. A V5 formal Python runtime dependency is forbidden.
@@ -166,6 +168,6 @@ allowed. A V5 formal Python runtime dependency is forbidden.
 The smoke proves preserved wiring and one locked seed. It is not a 20/50/100
 seed success-rate claim and does not extend the trained cube policy domain.
 
-**PHASE 3 CLOSEOUT RECOVERY VERIFICATION PENDING**
+**PHASE 3 COMPLETE**
 
-`READY_FOR_PHASE4 = false`
+`READY_FOR_PHASE4 = true`

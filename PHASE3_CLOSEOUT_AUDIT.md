@@ -1,12 +1,13 @@
 # Phase 3 Closeout Audit
 
-## Recovery notice
+## Recovery result
 
 The original final-result section below records a successful run from a dirty
 worktree at commit `94006de`. It is retained as historical recovery evidence,
-not clean-HEAD closeout proof. Current implementation recovery is complete;
-clean-HEAD physical verification is pending. See
-`CURRENT_MAIN_VS_CLOSEOUT_EVIDENCE_AUDIT.md`.
+not clean-HEAD closeout proof. Recovery re-verified the implementation from
+clean source commit `0b4060423fa226a4bb428a40b6b4961706359c12` and passed
+every closeout gate. See `CURRENT_MAIN_VS_CLOSEOUT_EVIDENCE_AUDIT.md` and
+`PHASE3_CLOSEOUT_RECOVERY_REPORT.md`.
 
 Audit baseline: `main` at `94006de24ecdcb4725394f24edf36d8d9b4c23c1`
 (`Complete native V7 physical runtime migration`).
@@ -194,7 +195,7 @@ reference/recovery controller, or entering Phase 4:
 - Static AST guards, isolated import probes, and a meta-path V5 blocker protect
   the formal import graph.
 
-### Phase 3 final acceptance table
+### Historical dirty-worktree acceptance table
 
 | Acceptance item | Final value |
 |---|---|
@@ -245,15 +246,37 @@ both purity and V7-chain gates verified. The MP4 independently decoded all
 V5-trained checkpoints remain allowed. V5 historical/regression source remains
 allowed. V5 formal Python runtime dependency is forbidden and absent.
 
-**PHASE 3 CLOSEOUT RECOVERY VERIFICATION PENDING**
+## Clean-HEAD Recovery verification
 
-`READY_FOR_PHASE4 = false`
+The replacement summary records both
+`source_worktree_clean_before_run=true` / `source_git_status_before_run=[]` and
+`git_worktree_dirty=false` / `git_status=[]`. It passed stable physical success
+1/1, 8/8 Skills, 7/7 handoffs, 729 strict Vision calls, zero invalid/oracle/
+reference/recovery use, zero V5 modules, no V5 path exposure, an enabled import
+blocker, verified runtime purity, and the V7-chain gate. Independent decoding
+read 767/767 nonblank MP4 frames at 640x480 and 20 FPS.
+
+Clean-HEAD evidence:
+
+- `evidence/phase3_closeout_clean_head_runtime_purity.json`
+- `evidence/phase3_closeout_clean_head_checkpoint_compatibility.json`
+- `evidence/phase3_closeout_clean_head_seed61081.summary.json`
+- `evidence/phase3_closeout_clean_head_seed61081.mp4`
+
+The full regression result is 291 passed, 0 failed, 0 skipped; `compileall`
+passed; all eight checkpoints remained exactly compatible with action dimension
+5 and maximum error 0.0.
+
+**PHASE 3 COMPLETE**
+
+`READY_FOR_PHASE4 = true`
 
 ## Files changed by the closeout
 
 - `ACTIONS.md`
 - `ARCHITECTURE.md`
 - `PHASE3_CLOSEOUT_AUDIT.md`
+- `PHASE3_CLOSEOUT_RECOVERY_REPORT.md`
 - `STATUS.md`
 - `config/evaluation/known_size_cube.json`
 - `config/simulation/smoke_layout_seed61081.json`
@@ -265,6 +288,10 @@ allowed. V5 formal Python runtime dependency is forbidden and absent.
 - `evidence/phase3_closeout_runtime_purity.json`
 - `evidence/phase3_closeout_seed61081.mp4`
 - `evidence/phase3_closeout_seed61081.summary.json`
+- `evidence/phase3_closeout_clean_head_checkpoint_compatibility.json`
+- `evidence/phase3_closeout_clean_head_runtime_purity.json`
+- `evidence/phase3_closeout_clean_head_seed61081.mp4`
+- `evidence/phase3_closeout_clean_head_seed61081.summary.json`
 - `scripts/smoke/run_v7_smoke.ps1`
 - `src/stage_vla_v7/action/evaluation/__init__.py`
 - `src/stage_vla_v7/action/evaluation/skill_evaluator.py`

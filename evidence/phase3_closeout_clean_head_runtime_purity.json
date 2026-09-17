@@ -1,0 +1,21 @@
+{
+  "schema": "stage_vla_v7.phase3_runtime_purity.v1",
+  "generated_at_utc": "2026-09-17T14:33:46.904088+00:00",
+  "source_commit": "0b4060423fa226a4bb428a40b6b4961706359c12",
+  "source_worktree_clean_before_run": true,
+  "source_clean_before_run": true,
+  "source_git_status_before_run": [],
+  "source_snapshot_at_utc": "2026-09-17T14:33:46.894054+00:00",
+  "git_commit": "0b4060423fa226a4bb428a40b6b4961706359c12",
+  "git_worktree_dirty": false,
+  "git_status": [],
+  "runtime_purity": {
+    "vendor_path_exposed": false,
+    "loaded_v5_module_count": 0,
+    "loaded_v5_modules": [],
+    "exposed_vendor_paths": [],
+    "v5_root_env_set": false,
+    "import_blocker_enabled": true,
+    "verified": true
+  }
+}

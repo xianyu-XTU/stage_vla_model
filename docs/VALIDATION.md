@@ -2,10 +2,9 @@
 
 Validation date: 2026-09-17
 
-Recovery status: the results below are the historical dirty-worktree closeout
-record. Clean-HEAD tests, checkpoint verification, physical smoke, and video
-decode are pending and will be recorded under distinct `clean_head` evidence
-names before Phase 3 is declared complete.
+Recovery status: clean-HEAD closeout verification passed from source commit
+`0b4060423fa226a4bb428a40b6b4961706359c12`. The earlier dirty-worktree
+artifacts remain historical and were not overwritten.
 
 ## Environment
 
@@ -20,7 +19,7 @@ names before Phase 3 is declared complete.
 ## Automated regression
 
 ```text
-288 passed, 0 failed, 0 skipped
+291 passed, 0 failed, 0 skipped
 ```
 
 The suite covers public contracts, dependency boundaries, parsing and provider
@@ -75,16 +74,17 @@ and compared direct TorchScript plus frozen safety with the V7
 | RETREAT | 55 | 5 | 0.0 |
 
 The machine-readable result is
-`evidence/phase3_closeout_checkpoint_compatibility.json`.
+`evidence/phase3_closeout_clean_head_checkpoint_compatibility.json`.
 
-## Historical physical smoke
+## Final clean-HEAD physical smoke
 
-The final run used the frozen seed-61081 layout, strict RGB-D Vision, all eight
-real policies, the required V7 audit gate, the Observer camera, strict MP4
-recording, and no reference or recovery controller.
+The final run used clean source commit `0b40604`, the frozen seed-61081 layout,
+strict RGB-D Vision, all eight real policies, the required V7 audit gate, the
+Observer camera, strict MP4 recording, and no reference or recovery controller.
+Outputs were written outside the repository so the source remained clean.
 
 ```powershell
-scripts\smoke\run_v7_smoke.ps1 -IsaacLabRoot E:\work\IsaacLab -ArtifactRoot E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 -Calibration E:\stage_vla_v5\outputs\vision_rgbd_mapping_calibration_train_20260910.json -Output evidence\phase3_closeout_seed61081.summary.json -Video -VideoPath evidence\phase3_closeout_seed61081.mp4 -Headless
+scripts\smoke\run_v7_smoke.ps1 -IsaacLabRoot E:\work\IsaacLab -ArtifactRoot E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 -Calibration E:\stage_vla_v5\outputs\vision_rgbd_mapping_calibration_train_20260910.json -Output ..\phase3_closeout_clean_head\phase3_closeout_clean_head_seed61081.summary.json -Video -VideoPath ..\phase3_closeout_clean_head\phase3_closeout_clean_head_seed61081.mp4 -Headless
 ```
 
 | Check | Result |
@@ -93,20 +93,22 @@ scripts\smoke\run_v7_smoke.ps1 -IsaacLabRoot E:\work\IsaacLab -ArtifactRoot E:\s
 | V7 chain gate | passed |
 | Runtime purity gate | passed |
 | V5 import blocker | enabled |
+| Source clean before run / source status | true / `[]` |
+| End-of-run Git dirty / status | false / `[]` |
 | Loaded V5 modules | 0 |
 | Vendor path exposed | false |
 | Prepared Skill tokens | 8/8 |
 | State-exact handoffs | 7/7 |
 | Mid-episode resets | 0 |
-| V7 Vision calls / invalid frames | 730 / 0 |
+| V7 Vision calls / invalid frames | 729 / 0 |
 | Oracle fallback count | 0 |
 | Reference Skills / recovery calls | 0 / 0 |
-| Observer frames | 768 |
-| Observer output | 640x480, 20 FPS, 38.4 s |
+| Observer frames | 767 |
+| Observer output | 640x480, 20 FPS, 38.35 s |
 | Observer used for Vision | false |
 
 Per-Skill inference rows were REACH 374, GRASP 31, LIFT 60, TRANSPORT 101,
-ALIGN 32, DESCEND 20, RELEASE_STABILIZE 7, and RETREAT 103. Every Skill passed
+ALIGN 31, DESCEND 20, RELEASE_STABILIZE 7, and RETREAT 103. Every Skill passed
 for the single validation environment.
 
 ## Independent video decode
@@ -115,14 +117,14 @@ OpenCV reopened the completed MP4 and decoded the entire stream independently
 of the recorder:
 
 ```text
-decoded frames: 768 / 768
-nonblank frames: 768 / 768
+decoded frames: 767 / 767
+nonblank frames: 767 / 767
 resolution: 640 x 480
 frame rate: 20 FPS
-minimum per-frame pixel range: 255
-minimum per-frame standard deviation: 62.16488193909765
+minimum per-frame pixel range: 254
+minimum per-frame standard deviation: 62.19127421237001
 decoded pixel SHA-256:
-97944f34b5adaed6642e07d13f082730eaa16f8e0c8d77980d83c3b419ec6fec
+8345c24593cfa76d984420f828ab91946043881fae0a6f167b7398972a6898e6
 ```
 
 Every decoded frame had nonzero pixel range, rejecting all-black or constant
@@ -144,15 +146,14 @@ E:\work\IsaacLab\_isaac_sim\python.bat -m pytest tests
 E:\work\IsaacLab\_isaac_sim\python.bat -m compileall -q src tests scripts tools
 
 # Eight-checkpoint compatibility
-E:\work\IsaacLab\_isaac_sim\python.bat tools\migration\verify_checkpoint_compatibility.py --artifact-root E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 --lock config\artifacts.lock.json --output evidence\phase3_closeout_checkpoint_compatibility.json
+E:\work\IsaacLab\_isaac_sim\python.bat tools\migration\verify_checkpoint_compatibility.py --artifact-root E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 --lock config\artifacts.lock.json --output ..\phase3_closeout_clean_head\phase3_closeout_clean_head_checkpoint_compatibility.json
 
 # V5-isolated runtime purity snapshot
-E:\work\IsaacLab\_isaac_sim\python.bat -m tools.evaluation.export_runtime_purity --output evidence\phase3_closeout_runtime_purity.json --require-pure
+E:\work\IsaacLab\_isaac_sim\python.bat -m tools.evaluation.export_runtime_purity --output ..\phase3_closeout_clean_head\phase3_closeout_clean_head_runtime_purity.json --require-pure
 ```
 
-The Recovery exporter installs the same V5 blocker used by the physical
-evaluator, so the replacement standalone snapshot must record
-`import_blocker_enabled=true`.
+The standalone snapshot records the same clean source commit and enabled V5
+blocker as the physical evaluator.
 
 ## Claim boundary
 
@@ -163,5 +164,5 @@ non-cube policy support, fully visual proprioception/contact feedback, or a
 multi-seed success rate.
 
 V5-trained checkpoints and retained historical/regression source are allowed;
-a V5 formal runtime dependency is not. Clean-HEAD closeout verification is
-pending, so `READY_FOR_PHASE4 = false`.
+a V5 formal runtime dependency is not. All clean-HEAD closeout gates pass, so
+`READY_FOR_PHASE4 = true`.

@@ -1,0 +1,1282 @@
+{
+  "status": "passed",
+  "v7_chain": {
+    "verified": true,
+    "required": true,
+    "command": "\u628a\u7ea2\u8272\u65b9\u5757\u653e\u5230\u84dd\u8272\u65b9\u5757\u4e0a",
+    "planned_relations": [
+      {
+        "object": "red_cube",
+        "support": "blue_cube"
+      }
+    ],
+    "relations": 1,
+    "tokens": 8,
+    "language_provider": "deterministic-instruction-parser",
+    "vision_provider": "v7-compact-color-depth",
+    "action_providers": [
+      "torchscript-align",
+      "torchscript-descend",
+      "torchscript-grasp",
+      "torchscript-lift",
+      "torchscript-reach",
+      "torchscript-release_stabilize",
+      "torchscript-retreat",
+      "torchscript-transport"
+    ],
+    "action_bundles": [
+      "v7-migrated-v5-cube"
+    ],
+    "inference_rows_by_skill": {
+      "ALIGN": 31,
+      "DESCEND": 20,
+      "GRASP": 31,
+      "LIFT": 60,
+      "REACH": 374,
+      "RELEASE_STABILIZE": 7,
+      "RETREAT": 103,
+      "TRANSPORT": 101
+    },
+    "inference_rows_by_token": {
+      "0:ALIGN": 31,
+      "0:DESCEND": 20,
+      "0:GRASP": 31,
+      "0:LIFT": 60,
+      "0:REACH": 374,
+      "0:RELEASE_STABILIZE": 7,
+      "0:RETREAT": 103,
+      "0:TRANSPORT": 101
+    },
+    "batch_calls_by_skill": {
+      "ALIGN": 31,
+      "DESCEND": 20,
+      "GRASP": 31,
+      "LIFT": 60,
+      "REACH": 374,
+      "RELEASE_STABILIZE": 7,
+      "RETREAT": 103,
+      "TRANSPORT": 101
+    },
+    "safety_projection_count": 215,
+    "all_prepared_skills_exercised": true
+  },
+  "runtime_purity": {
+    "vendor_path_exposed": false,
+    "loaded_v5_module_count": 0,
+    "loaded_v5_modules": [],
+    "exposed_vendor_paths": [],
+    "v5_root_env_set": false,
+    "import_blocker_enabled": true,
+    "verified": true
+  },
+  "provenance": {
+    "generated_at_utc": "2026-09-17T14:38:15.356851+00:00",
+    "source_commit": "0b4060423fa226a4bb428a40b6b4961706359c12",
+    "source_worktree_clean_before_run": true,
+    "source_clean_before_run": true,
+    "source_git_status_before_run": [],
+    "source_snapshot_at_utc": "2026-09-17T14:35:50.050366+00:00",
+    "git_commit": "0b4060423fa226a4bb428a40b6b4961706359c12",
+    "git_worktree_dirty": false,
+    "git_status": [],
+    "artifact_lock": {
+      "path": "C:\\Users\\Mayn\\Documents\\Codex\\2026-09-17\\files-pasted-by-the-user-stage\\work\\stage_vla_model\\config\\artifacts.lock.json",
+      "sha256": "AED7B1DE2CFB610C086046B85797B3F933C2166EDD5D5520B1283812D62F4C2D"
+    },
+    "checkpoint_hashes": {
+      "REACH": {
+        "path": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\reach\\policy.ts",
+        "sha256": "582CCC25F4FB6468547029F68DF7A8B4B11737E3803DBDF6E88248B24328C768"
+      },
+      "GRASP": {
+        "path": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\grasp\\policy.ts",
+        "sha256": "F11179EE4F24B100DEDA6D1E621139977FA521D902DEB63A9D8468A6D067280F"
+      },
+      "LIFT": {
+        "path": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\lift\\policy.ts",
+        "sha256": "568ED95D434076677E9B46E10573D32426F8250566DDE23936D231B1FD52A165"
+      },
+      "TRANSPORT": {
+        "path": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\transport\\policy.ts",
+        "sha256": "099E84DD6766955CBFC1CCE9D967733DC3D861AFAEF3890BA96C6B0F279FDF86"
+      },
+      "ALIGN": {
+        "path": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\align\\policy.ts",
+        "sha256": "E6868719E82B641E6A993EC40564297A4AC29D5113F018F43BFE189C499262D3"
+      },
+      "DESCEND": {
+        "path": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\descend\\policy.ts",
+        "sha256": "A561E5D4AF62ECFD554F181C3A947FDE99DB41148C7168C23F72FFC43A6C3326"
+      },
+      "RELEASE_STABILIZE": {
+        "path": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\release_stabilize\\policy.ts",
+        "sha256": "8808F91902F23FE6F32F2E1C3F56A9715503BE978BFC05DB44368FAD37C5DC00"
+      },
+      "RETREAT": {
+        "path": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\retreat\\policy.ts",
+        "sha256": "1F61EB0D7DC3CA479CA13AFF225F8026DE4C53969119B4A3E0846D2768452A3C"
+      }
+    }
+  },
+  "closeout": {
+    "physical_success": true,
+    "stable_success": true,
+    "skills_exercised": 8,
+    "skill_handoffs": 7,
+    "vision_service_calls": 729,
+    "invalid_vision_frames": 0,
+    "oracle_fallback_count": 0,
+    "reference_skill_calls": 0,
+    "recovery_calls": 0,
+    "runtime_purity_verified": true,
+    "v5_import_blocker_enabled": true,
+    "v7_chain_verified": true
+  },
+  "scope": "V7 language + V7 RGB-D service + V7 pipeline-routed TorchScript actions; oracle robot proprioception and physical terminal feedback; one initial reset, no inter-relation reset",
+  "vision": {
+    "enabled": true,
+    "frames": 729,
+    "v7_service_calls": 729,
+    "fail_policy": "strict",
+    "strict_mode": true,
+    "invalid_frames": 0,
+    "missing_by_asset": {
+      "cube_1": 0,
+      "cube_2": 0,
+      "cube_3": 0
+    },
+    "failed_objects": [],
+    "oracle_fallback_used": false,
+    "oracle_fallback_count": 0,
+    "oracle_fallback_objects": [],
+    "oracle_fallback_steps": [],
+    "oracle_fallback_events": [],
+    "seed_valid": [
+      true
+    ],
+    "backend": "compact_color_depth",
+    "camera_calibration": "E:\\stage_vla_v5\\outputs\\vision_rgbd_mapping_calibration_train_20260910.json",
+    "geometry_bias_m": [
+      -0.0099,
+      0.00214,
+      0.0
+    ]
+  },
+  "episodes": 1,
+  "scene_assets": [
+    "cube_1",
+    "cube_2",
+    "cube_3"
+  ],
+  "validation_envs": [
+    0
+  ],
+  "object_geometry": "box",
+  "asset_roles": {
+    "object": "cube_2",
+    "support": "cube_1"
+  },
+  "task_pairs": [
+    {
+      "object": "cube_2",
+      "support": "cube_1"
+    }
+  ],
+  "grasp_profile": {
+    "geometry": "box",
+    "height_ratio": 0.5,
+    "width_ratio": null
+  },
+  "successes": {
+    "GRASP": 1,
+    "LIFT": 1,
+    "TRANSPORT": 1,
+    "ALIGN": 1,
+    "DESCEND": 1,
+    "RELEASE_STABILIZE": 1,
+    "RETREAT": 1
+  },
+  "chain_successes": 1,
+  "seed_success": [
+    true
+  ],
+  "mid_episode_resets": 0,
+  "reach_steps": [
+    374
+  ],
+  "reach_stable_steps": 3,
+  "reach_recovery_steps": 0,
+  "reach_recovery_steps_used": [
+    0
+  ],
+  "reach_recovery_steps_attempted": 0,
+  "reach_refine_steps": 0,
+  "reach_exit": {
+    "ee": [
+      [
+        0.41344115138053894,
+        -0.06887402385473251,
+        0.03232048451900482
+      ]
+    ],
+    "object": [
+      [
+        0.41425055265426636,
+        -0.0690997838973999,
+        0.02049414999783039
+      ]
+    ],
+    "red": [
+      [
+        0.41425055265426636,
+        -0.0690997838973999,
+        0.02049414999783039
+      ]
+    ],
+    "left_tip": [
+      [
+        0.4437731206417084,
+        -0.09487704187631607,
+        0.030126851052045822
+      ]
+    ],
+    "right_tip": [
+      [
+        0.3831429183483124,
+        -0.04274100810289383,
+        0.032518696039915085
+      ]
+    ],
+    "tip_target_error_m": [
+      [
+        -0.0007925331592559814,
+        0.0002907589077949524,
+        0.010828623548150063
+      ]
+    ],
+    "parallel_jaw_yaw_error_rad": [
+      0.0037965774536132812
+    ]
+  },
+  "checkpoints": {
+    "GRASP": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\grasp\\policy.ts",
+    "LIFT": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\lift\\policy.ts",
+    "TRANSPORT": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\transport\\policy.ts",
+    "ALIGN": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\align\\policy.ts",
+    "DESCEND": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\descend\\policy.ts",
+    "RELEASE_STABILIZE": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\release_stabilize\\policy.ts",
+    "RETREAT": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\retreat\\policy.ts"
+  },
+  "artifact_lock": "C:\\Users\\Mayn\\Documents\\Codex\\2026-09-17\\files-pasted-by-the-user-stage\\work\\stage_vla_model\\config\\artifacts.lock.json",
+  "reach_checkpoint": "E:\\stage_vla_v5\\outputs\\v5_generalized_cube_bc_v1\\reach\\policy.ts",
+  "reach_controller": "independent_bc_policy",
+  "reach_refinement_controller": "independent_bc_policy",
+  "reach_recovery_controller": null,
+  "pure_policy_actions": true,
+  "reference_skills": [],
+  "fixed_object_positions_local_xyz": null,
+  "fixed_asset_positions_local_xyz": {
+    "cube_1": [
+      [
+        0.46386252610600415,
+        0.08704969531333681,
+        0.0203
+      ]
+    ],
+    "cube_2": [
+      [
+        0.42334719269070775,
+        -0.07558511420069945,
+        0.0203
+      ]
+    ],
+    "cube_3": [
+      [
+        0.5334817917243997,
+        -0.1368953447047614,
+        0.0203
+      ]
+    ]
+  },
+  "asset_layout_file": "C:\\Users\\Mayn\\Documents\\Codex\\2026-09-17\\files-pasted-by-the-user-stage\\work\\stage_vla_model\\config\\simulation\\smoke_layout_seed61081.json",
+  "random_xy": false,
+  "random_xy_seed": null,
+  "handoffs": [
+    {
+      "from": "REACH",
+      "to": "GRASP",
+      "physical_state_exact": true
+    },
+    {
+      "from": "GRASP",
+      "to": "LIFT",
+      "physical_state_exact": true
+    },
+    {
+      "from": "LIFT",
+      "to": "TRANSPORT",
+      "physical_state_exact": true
+    },
+    {
+      "from": "TRANSPORT",
+      "to": "ALIGN",
+      "physical_state_exact": true
+    },
+    {
+      "from": "ALIGN",
+      "to": "DESCEND",
+      "physical_state_exact": true
+    },
+    {
+      "from": "DESCEND",
+      "to": "RELEASE_STABILIZE",
+      "physical_state_exact": true
+    },
+    {
+      "from": "RELEASE_STABILIZE",
+      "to": "RETREAT",
+      "physical_state_exact": true
+    }
+  ],
+  "interstage_conditioners": [
+    {
+      "from": "GRASP",
+      "steps": 10,
+      "type": "closed_gripper_physics_settle",
+      "simulator_reset": false
+    },
+    {
+      "from": "LIFT",
+      "steps": 10,
+      "type": "closed_gripper_physics_settle",
+      "simulator_reset": false
+    },
+    {
+      "from": "TRANSPORT",
+      "steps": 10,
+      "type": "closed_gripper_physics_settle",
+      "simulator_reset": false
+    },
+    {
+      "from": "ALIGN",
+      "steps": 10,
+      "type": "closed_gripper_physics_settle",
+      "simulator_reset": false
+    }
+  ],
+  "horizons": {
+    "GRASP": 160,
+    "LIFT": 500,
+    "TRANSPORT": 500,
+    "ALIGN": 650,
+    "DESCEND": 400,
+    "RELEASE_STABILIZE": 300,
+    "RETREAT": 500
+  },
+  "translation_limits_m": {
+    "LIFT": 0.005,
+    "TRANSPORT": 0.005,
+    "ALIGN": 0.005,
+    "DESCEND": 0.003,
+    "RELEASE_STABILIZE": 0.003,
+    "RETREAT": 0.005
+  },
+  "thresholds": {
+    "align_xy_m": 0.01,
+    "align_height_m": 0.0618,
+    "align_height_tolerance_m": 0.015,
+    "descend_height_m": 0.0468,
+    "descend_height_tolerance_m": 0.002,
+    "stack_xy_m": 0.04,
+    "stack_height_tolerance_m": 0.01,
+    "speed_mps": 0.05,
+    "physical_height_tolerance_m": 0.015,
+    "pregrasp_yaw_tolerance_rad": 0.005,
+    "angular_speed_source": "control_delta",
+    "retreat_distance_m": 0.1,
+    "retreat_height_m": 0.08
+  },
+  "demonstrations": null,
+  "dagger_labels": null,
+  "rows": {
+    "GRASP": [
+      {
+        "env": 0,
+        "steps": 31,
+        "success": true,
+        "failure": false,
+        "timeout": false,
+        "physical_grasp": true,
+        "pressure_ok": true,
+        "force_n": [
+          3.9069488048553467,
+          3.803752899169922
+        ],
+        "target_force_n": 5.079061508178711,
+        "gripper_joint_m": [
+          0.023811500519514084,
+          0.02361457608640194
+        ],
+        "gripper_target_m": [
+          0.01601177453994751,
+          0.01599999889731407
+        ],
+        "fingertip_gap_m": 0.04742606729269028,
+        "radial_error_m": 0.007829941809177399,
+        "left_height_error_m": 0.006819440051913261,
+        "right_height_error_m": 0.008132068440318108,
+        "stack_xy_m": 0.16065829992294312,
+        "stack_relative_height_m": 0.0003928355872631073,
+        "lift_target_height_m": 0.05999999865889549,
+        "stability_speed_mps": 0.0018667050171643496,
+        "instantaneous_speed_mps": 0.04972191900014877,
+        "angular_speed_radps": 0.002523730043321848,
+        "instantaneous_angular_speed_radps": 2.733881950378418,
+        "control_angular_speed_radps": 0.002523730043321848,
+        "stable_steps": 3,
+        "first_action": [
+          -0.16432005167007446,
+          0.18686112761497498,
+          -0.860546886920929,
+          0.06679556518793106,
+          -1.0
+        ],
+        "terminal_action": [
+          -0.019301697611808777,
+          0.2567524015903473,
+          -0.6152912974357605,
+          -0.16579388082027435,
+          -0.7906160354614258
+        ]
+      }
+    ],
+    "LIFT": [
+      {
+        "env": 0,
+        "steps": 60,
+        "success": true,
+        "failure": false,
+        "timeout": false,
+        "physical_grasp": true,
+        "pressure_ok": true,
+        "force_n": [
+          3.8680779933929443,
+          3.851391077041626
+        ],
+        "target_force_n": 5.099999904632568,
+        "gripper_joint_m": [
+          0.02367917075753212,
+          0.02374577336013317
+        ],
+        "gripper_target_m": [
+          0.01599999889731407,
+          0.01599999889731407
+        ],
+        "fingertip_gap_m": 0.04742491990327835,
+        "radial_error_m": 0.007831862196326256,
+        "left_height_error_m": 0.0067261457443237305,
+        "right_height_error_m": 0.008245497941970825,
+        "stack_xy_m": 0.16087178885936737,
+        "stack_relative_height_m": 0.0645923912525177,
+        "lift_target_height_m": 0.0618000403046608,
+        "stability_speed_mps": 0.021509015932679176,
+        "instantaneous_speed_mps": 0.05968858674168587,
+        "angular_speed_radps": 0.0015284472610801458,
+        "instantaneous_angular_speed_radps": 2.7531063556671143,
+        "control_angular_speed_radps": 0.0015284472610801458,
+        "stable_steps": 3,
+        "first_action": [
+          -0.36154070496559143,
+          -0.016841132193803787,
+          1.0,
+          0.8738402128219604,
+          -1.0
+        ],
+        "terminal_action": [
+          -0.2490619421005249,
+          0.3015173077583313,
+          1.0,
+          0.5844106674194336,
+          -1.0
+        ]
+      }
+    ],
+    "TRANSPORT": [
+      {
+        "env": 0,
+        "steps": 101,
+        "success": true,
+        "failure": false,
+        "timeout": false,
+        "physical_grasp": true,
+        "pressure_ok": true,
+        "force_n": [
+          3.8728983402252197,
+          3.8544654846191406
+        ],
+        "target_force_n": 5.099999904632568,
+        "gripper_joint_m": [
+          0.023688476532697678,
+          0.023736214265227318
+        ],
+        "gripper_target_m": [
+          0.01599999889731407,
+          0.01599999889731407
+        ],
+        "fingertip_gap_m": 0.04742467403411865,
+        "radial_error_m": 0.007832309231162071,
+        "left_height_error_m": 0.006581440567970276,
+        "right_height_error_m": 0.008422374725341797,
+        "stack_xy_m": 0.041849005967378616,
+        "stack_relative_height_m": 0.06371578574180603,
+        "lift_target_height_m": 0.0618000403046608,
+        "stability_speed_mps": 0.022504914551973343,
+        "instantaneous_speed_mps": 0.04636209085583687,
+        "angular_speed_radps": 0.002608328592032194,
+        "instantaneous_angular_speed_radps": 2.757150173187256,
+        "control_angular_speed_radps": 0.002608328592032194,
+        "stable_steps": 3,
+        "first_action": [
+          1.0,
+          1.0,
+          -0.035308342427015305,
+          0.03277880698442459,
+          -1.0
+        ],
+        "terminal_action": [
+          0.22069725394248962,
+          1.0,
+          0.02599414810538292,
+          0.019080370664596558,
+          -1.0
+        ]
+      }
+    ],
+    "ALIGN": [
+      {
+        "env": 0,
+        "steps": 31,
+        "success": true,
+        "failure": false,
+        "timeout": false,
+        "physical_grasp": true,
+        "pressure_ok": true,
+        "force_n": [
+          3.8739233016967773,
+          3.856523036956787
+        ],
+        "target_force_n": 5.099999904632568,
+        "gripper_joint_m": [
+          0.02368956431746483,
+          0.023734934628009796
+        ],
+        "gripper_target_m": [
+          0.01599999889731407,
+          0.01599999889731407
+        ],
+        "fingertip_gap_m": 0.047424521297216415,
+        "radial_error_m": 0.007832215167582035,
+        "left_height_error_m": 0.006526939570903778,
+        "right_height_error_m": 0.008491389453411102,
+        "stack_xy_m": 0.00795085821300745,
+        "stack_relative_height_m": 0.06095626577734947,
+        "lift_target_height_m": 0.0618000403046608,
+        "stability_speed_mps": 0.017254512757062912,
+        "instantaneous_speed_mps": 0.04231365770101547,
+        "angular_speed_radps": 0.01188816037029028,
+        "instantaneous_angular_speed_radps": 2.760303258895874,
+        "control_angular_speed_radps": 0.01188816037029028,
+        "stable_steps": 3,
+        "first_action": [
+          0.0448836050927639,
+          1.0,
+          -0.5153461694717407,
+          -0.012970920652151108,
+          -1.0
+        ],
+        "terminal_action": [
+          0.14999860525131226,
+          0.5164380669593811,
+          -0.3556938171386719,
+          -0.009549248963594437,
+          -1.0
+        ]
+      }
+    ],
+    "DESCEND": [
+      {
+        "env": 0,
+        "steps": 20,
+        "success": true,
+        "failure": false,
+        "timeout": false,
+        "physical_grasp": true,
+        "pressure_ok": true,
+        "force_n": [
+          3.880110740661621,
+          3.7786834239959717
+        ],
+        "target_force_n": 5.099999904632568,
+        "gripper_joint_m": [
+          0.023690776899456978,
+          0.02371588721871376
+        ],
+        "gripper_target_m": [
+          0.01599999889731407,
+          0.01599999889731407
+        ],
+        "fingertip_gap_m": 0.04740665853023529,
+        "radial_error_m": 0.007781364489346743,
+        "left_height_error_m": 0.006435811519622803,
+        "right_height_error_m": 0.008469708263874054,
+        "stack_xy_m": 0.0075668166391551495,
+        "stack_relative_height_m": 0.04691188037395477,
+        "lift_target_height_m": 0.0618000403046608,
+        "stability_speed_mps": 0.012533069588243961,
+        "instantaneous_speed_mps": 0.017065396532416344,
+        "angular_speed_radps": 0.07677728682756424,
+        "instantaneous_angular_speed_radps": 2.073373556137085,
+        "control_angular_speed_radps": 0.07677728682756424,
+        "stable_steps": 3,
+        "first_action": [
+          0.8932029008865356,
+          -0.06423496454954147,
+          -0.9999992847442627,
+          0.0,
+          -1.0
+        ],
+        "terminal_action": [
+          0.9933633804321289,
+          0.9975011944770813,
+          -0.9997865557670593,
+          0.0,
+          -1.0
+        ]
+      }
+    ],
+    "RELEASE_STABILIZE": [
+      {
+        "env": 0,
+        "steps": 7,
+        "success": true,
+        "failure": false,
+        "timeout": false,
+        "physical_grasp": false,
+        "pressure_ok": false,
+        "force_n": [
+          0.0,
+          0.0
+        ],
+        "target_force_n": 5.0,
+        "gripper_joint_m": [
+          0.03998268395662308,
+          0.03998279571533203
+        ],
+        "gripper_target_m": [
+          0.03999999910593033,
+          0.03999999910593033
+        ],
+        "fingertip_gap_m": 0.07996544986963272,
+        "radial_error_m": 0.0075973328202962875,
+        "left_height_error_m": 0.0055947452783584595,
+        "right_height_error_m": 0.009053714573383331,
+        "stack_xy_m": 0.007853059098124504,
+        "stack_relative_height_m": 0.046797215938568115,
+        "lift_target_height_m": 0.0618000403046608,
+        "stability_speed_mps": 2.9101553082000464e-05,
+        "instantaneous_speed_mps": 0.0024396206717938185,
+        "angular_speed_radps": 0.00045512107317335904,
+        "instantaneous_angular_speed_radps": 0.06393193453550339,
+        "control_angular_speed_radps": 0.00045512107317335904,
+        "stable_steps": 5,
+        "first_action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.983478307723999
+        ],
+        "terminal_action": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.9955581426620483
+        ]
+      }
+    ],
+    "RETREAT": [
+      {
+        "env": 0,
+        "steps": 103,
+        "success": true,
+        "failure": false,
+        "timeout": false,
+        "physical_grasp": false,
+        "pressure_ok": false,
+        "force_n": [
+          0.0,
+          0.0
+        ],
+        "target_force_n": 5.0,
+        "gripper_joint_m": [
+          0.03999999538064003,
+          0.03999997302889824
+        ],
+        "gripper_target_m": [
+          0.03999999910593033,
+          0.03999999910593033
+        ],
+        "fingertip_gap_m": 0.07999999821186066,
+        "radial_error_m": 0.10715645551681519,
+        "left_height_error_m": 0.10553379356861115,
+        "right_height_error_m": 0.10894723236560822,
+        "stack_xy_m": 0.007856175303459167,
+        "stack_relative_height_m": 0.046796008944511414,
+        "lift_target_height_m": 0.0618000403046608,
+        "stability_speed_mps": 2.8894423849123996e-06,
+        "instantaneous_speed_mps": 0.004940527491271496,
+        "angular_speed_radps": 3.035281042684801e-05,
+        "instantaneous_angular_speed_radps": 0.0626407340168953,
+        "control_angular_speed_radps": 3.035281042684801e-05,
+        "stable_steps": 20,
+        "first_action": [
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          1.0
+        ],
+        "terminal_action": [
+          0.0,
+          0.0,
+          0.014702841639518738,
+          0.0,
+          1.0
+        ]
+      }
+    ]
+  },
+  "relations": [
+    {
+      "asset_roles": {
+        "object": "cube_2",
+        "support": "cube_1"
+      },
+      "passed": true,
+      "env_success": [
+        true
+      ],
+      "chain_successes": 1,
+      "successes": {
+        "GRASP": 1,
+        "LIFT": 1,
+        "TRANSPORT": 1,
+        "ALIGN": 1,
+        "DESCEND": 1,
+        "RELEASE_STABILIZE": 1,
+        "RETREAT": 1
+      },
+      "reach_steps": [
+        374
+      ],
+      "reach_recovery_steps": [
+        0
+      ],
+      "reach_recovery_steps_attempted": 0,
+      "reach_refine_steps": 0,
+      "reach_exit": {
+        "ee": [
+          [
+            0.41344115138053894,
+            -0.06887402385473251,
+            0.03232048451900482
+          ]
+        ],
+        "object": [
+          [
+            0.41425055265426636,
+            -0.0690997838973999,
+            0.02049414999783039
+          ]
+        ],
+        "red": [
+          [
+            0.41425055265426636,
+            -0.0690997838973999,
+            0.02049414999783039
+          ]
+        ],
+        "left_tip": [
+          [
+            0.4437731206417084,
+            -0.09487704187631607,
+            0.030126851052045822
+          ]
+        ],
+        "right_tip": [
+          [
+            0.3831429183483124,
+            -0.04274100810289383,
+            0.032518696039915085
+          ]
+        ],
+        "tip_target_error_m": [
+          [
+            -0.0007925331592559814,
+            0.0002907589077949524,
+            0.010828623548150063
+          ]
+        ],
+        "parallel_jaw_yaw_error_rad": [
+          0.0037965774536132812
+        ]
+      },
+      "role_switch_physical_state_exact": true,
+      "handoffs": [
+        {
+          "from": "REACH",
+          "to": "GRASP",
+          "physical_state_exact": true
+        },
+        {
+          "from": "GRASP",
+          "to": "LIFT",
+          "physical_state_exact": true
+        },
+        {
+          "from": "LIFT",
+          "to": "TRANSPORT",
+          "physical_state_exact": true
+        },
+        {
+          "from": "TRANSPORT",
+          "to": "ALIGN",
+          "physical_state_exact": true
+        },
+        {
+          "from": "ALIGN",
+          "to": "DESCEND",
+          "physical_state_exact": true
+        },
+        {
+          "from": "DESCEND",
+          "to": "RELEASE_STABILIZE",
+          "physical_state_exact": true
+        },
+        {
+          "from": "RELEASE_STABILIZE",
+          "to": "RETREAT",
+          "physical_state_exact": true
+        }
+      ],
+      "interstage_conditioners": [
+        {
+          "from": "GRASP",
+          "steps": 10,
+          "type": "closed_gripper_physics_settle",
+          "simulator_reset": false
+        },
+        {
+          "from": "LIFT",
+          "steps": 10,
+          "type": "closed_gripper_physics_settle",
+          "simulator_reset": false
+        },
+        {
+          "from": "TRANSPORT",
+          "steps": 10,
+          "type": "closed_gripper_physics_settle",
+          "simulator_reset": false
+        },
+        {
+          "from": "ALIGN",
+          "steps": 10,
+          "type": "closed_gripper_physics_settle",
+          "simulator_reset": false
+        }
+      ],
+      "rows": {
+        "GRASP": [
+          {
+            "env": 0,
+            "steps": 31,
+            "success": true,
+            "failure": false,
+            "timeout": false,
+            "physical_grasp": true,
+            "pressure_ok": true,
+            "force_n": [
+              3.9069488048553467,
+              3.803752899169922
+            ],
+            "target_force_n": 5.079061508178711,
+            "gripper_joint_m": [
+              0.023811500519514084,
+              0.02361457608640194
+            ],
+            "gripper_target_m": [
+              0.01601177453994751,
+              0.01599999889731407
+            ],
+            "fingertip_gap_m": 0.04742606729269028,
+            "radial_error_m": 0.007829941809177399,
+            "left_height_error_m": 0.006819440051913261,
+            "right_height_error_m": 0.008132068440318108,
+            "stack_xy_m": 0.16065829992294312,
+            "stack_relative_height_m": 0.0003928355872631073,
+            "lift_target_height_m": 0.05999999865889549,
+            "stability_speed_mps": 0.0018667050171643496,
+            "instantaneous_speed_mps": 0.04972191900014877,
+            "angular_speed_radps": 0.002523730043321848,
+            "instantaneous_angular_speed_radps": 2.733881950378418,
+            "control_angular_speed_radps": 0.002523730043321848,
+            "stable_steps": 3,
+            "first_action": [
+              -0.16432005167007446,
+              0.18686112761497498,
+              -0.860546886920929,
+              0.06679556518793106,
+              -1.0
+            ],
+            "terminal_action": [
+              -0.019301697611808777,
+              0.2567524015903473,
+              -0.6152912974357605,
+              -0.16579388082027435,
+              -0.7906160354614258
+            ]
+          }
+        ],
+        "LIFT": [
+          {
+            "env": 0,
+            "steps": 60,
+            "success": true,
+            "failure": false,
+            "timeout": false,
+            "physical_grasp": true,
+            "pressure_ok": true,
+            "force_n": [
+              3.8680779933929443,
+              3.851391077041626
+            ],
+            "target_force_n": 5.099999904632568,
+            "gripper_joint_m": [
+              0.02367917075753212,
+              0.02374577336013317
+            ],
+            "gripper_target_m": [
+              0.01599999889731407,
+              0.01599999889731407
+            ],
+            "fingertip_gap_m": 0.04742491990327835,
+            "radial_error_m": 0.007831862196326256,
+            "left_height_error_m": 0.0067261457443237305,
+            "right_height_error_m": 0.008245497941970825,
+            "stack_xy_m": 0.16087178885936737,
+            "stack_relative_height_m": 0.0645923912525177,
+            "lift_target_height_m": 0.0618000403046608,
+            "stability_speed_mps": 0.021509015932679176,
+            "instantaneous_speed_mps": 0.05968858674168587,
+            "angular_speed_radps": 0.0015284472610801458,
+            "instantaneous_angular_speed_radps": 2.7531063556671143,
+            "control_angular_speed_radps": 0.0015284472610801458,
+            "stable_steps": 3,
+            "first_action": [
+              -0.36154070496559143,
+              -0.016841132193803787,
+              1.0,
+              0.8738402128219604,
+              -1.0
+            ],
+            "terminal_action": [
+              -0.2490619421005249,
+              0.3015173077583313,
+              1.0,
+              0.5844106674194336,
+              -1.0
+            ]
+          }
+        ],
+        "TRANSPORT": [
+          {
+            "env": 0,
+            "steps": 101,
+            "success": true,
+            "failure": false,
+            "timeout": false,
+            "physical_grasp": true,
+            "pressure_ok": true,
+            "force_n": [
+              3.8728983402252197,
+              3.8544654846191406
+            ],
+            "target_force_n": 5.099999904632568,
+            "gripper_joint_m": [
+              0.023688476532697678,
+              0.023736214265227318
+            ],
+            "gripper_target_m": [
+              0.01599999889731407,
+              0.01599999889731407
+            ],
+            "fingertip_gap_m": 0.04742467403411865,
+            "radial_error_m": 0.007832309231162071,
+            "left_height_error_m": 0.006581440567970276,
+            "right_height_error_m": 0.008422374725341797,
+            "stack_xy_m": 0.041849005967378616,
+            "stack_relative_height_m": 0.06371578574180603,
+            "lift_target_height_m": 0.0618000403046608,
+            "stability_speed_mps": 0.022504914551973343,
+            "instantaneous_speed_mps": 0.04636209085583687,
+            "angular_speed_radps": 0.002608328592032194,
+            "instantaneous_angular_speed_radps": 2.757150173187256,
+            "control_angular_speed_radps": 0.002608328592032194,
+            "stable_steps": 3,
+            "first_action": [
+              1.0,
+              1.0,
+              -0.035308342427015305,
+              0.03277880698442459,
+              -1.0
+            ],
+            "terminal_action": [
+              0.22069725394248962,
+              1.0,
+              0.02599414810538292,
+              0.019080370664596558,
+              -1.0
+            ]
+          }
+        ],
+        "ALIGN": [
+          {
+            "env": 0,
+            "steps": 31,
+            "success": true,
+            "failure": false,
+            "timeout": false,
+            "physical_grasp": true,
+            "pressure_ok": true,
+            "force_n": [
+              3.8739233016967773,
+              3.856523036956787
+            ],
+            "target_force_n": 5.099999904632568,
+            "gripper_joint_m": [
+              0.02368956431746483,
+              0.023734934628009796
+            ],
+            "gripper_target_m": [
+              0.01599999889731407,
+              0.01599999889731407
+            ],
+            "fingertip_gap_m": 0.047424521297216415,
+            "radial_error_m": 0.007832215167582035,
+            "left_height_error_m": 0.006526939570903778,
+            "right_height_error_m": 0.008491389453411102,
+            "stack_xy_m": 0.00795085821300745,
+            "stack_relative_height_m": 0.06095626577734947,
+            "lift_target_height_m": 0.0618000403046608,
+            "stability_speed_mps": 0.017254512757062912,
+            "instantaneous_speed_mps": 0.04231365770101547,
+            "angular_speed_radps": 0.01188816037029028,
+            "instantaneous_angular_speed_radps": 2.760303258895874,
+            "control_angular_speed_radps": 0.01188816037029028,
+            "stable_steps": 3,
+            "first_action": [
+              0.0448836050927639,
+              1.0,
+              -0.5153461694717407,
+              -0.012970920652151108,
+              -1.0
+            ],
+            "terminal_action": [
+              0.14999860525131226,
+              0.5164380669593811,
+              -0.3556938171386719,
+              -0.009549248963594437,
+              -1.0
+            ]
+          }
+        ],
+        "DESCEND": [
+          {
+            "env": 0,
+            "steps": 20,
+            "success": true,
+            "failure": false,
+            "timeout": false,
+            "physical_grasp": true,
+            "pressure_ok": true,
+            "force_n": [
+              3.880110740661621,
+              3.7786834239959717
+            ],
+            "target_force_n": 5.099999904632568,
+            "gripper_joint_m": [
+              0.023690776899456978,
+              0.02371588721871376
+            ],
+            "gripper_target_m": [
+              0.01599999889731407,
+              0.01599999889731407
+            ],
+            "fingertip_gap_m": 0.04740665853023529,
+            "radial_error_m": 0.007781364489346743,
+            "left_height_error_m": 0.006435811519622803,
+            "right_height_error_m": 0.008469708263874054,
+            "stack_xy_m": 0.0075668166391551495,
+            "stack_relative_height_m": 0.04691188037395477,
+            "lift_target_height_m": 0.0618000403046608,
+            "stability_speed_mps": 0.012533069588243961,
+            "instantaneous_speed_mps": 0.017065396532416344,
+            "angular_speed_radps": 0.07677728682756424,
+            "instantaneous_angular_speed_radps": 2.073373556137085,
+            "control_angular_speed_radps": 0.07677728682756424,
+            "stable_steps": 3,
+            "first_action": [
+              0.8932029008865356,
+              -0.06423496454954147,
+              -0.9999992847442627,
+              0.0,
+              -1.0
+            ],
+            "terminal_action": [
+              0.9933633804321289,
+              0.9975011944770813,
+              -0.9997865557670593,
+              0.0,
+              -1.0
+            ]
+          }
+        ],
+        "RELEASE_STABILIZE": [
+          {
+            "env": 0,
+            "steps": 7,
+            "success": true,
+            "failure": false,
+            "timeout": false,
+            "physical_grasp": false,
+            "pressure_ok": false,
+            "force_n": [
+              0.0,
+              0.0
+            ],
+            "target_force_n": 5.0,
+            "gripper_joint_m": [
+              0.03998268395662308,
+              0.03998279571533203
+            ],
+            "gripper_target_m": [
+              0.03999999910593033,
+              0.03999999910593033
+            ],
+            "fingertip_gap_m": 0.07996544986963272,
+            "radial_error_m": 0.0075973328202962875,
+            "left_height_error_m": 0.0055947452783584595,
+            "right_height_error_m": 0.009053714573383331,
+            "stack_xy_m": 0.007853059098124504,
+            "stack_relative_height_m": 0.046797215938568115,
+            "lift_target_height_m": 0.0618000403046608,
+            "stability_speed_mps": 2.9101553082000464e-05,
+            "instantaneous_speed_mps": 0.0024396206717938185,
+            "angular_speed_radps": 0.00045512107317335904,
+            "instantaneous_angular_speed_radps": 0.06393193453550339,
+            "control_angular_speed_radps": 0.00045512107317335904,
+            "stable_steps": 5,
+            "first_action": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.983478307723999
+            ],
+            "terminal_action": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.9955581426620483
+            ]
+          }
+        ],
+        "RETREAT": [
+          {
+            "env": 0,
+            "steps": 103,
+            "success": true,
+            "failure": false,
+            "timeout": false,
+            "physical_grasp": false,
+            "pressure_ok": false,
+            "force_n": [
+              0.0,
+              0.0
+            ],
+            "target_force_n": 5.0,
+            "gripper_joint_m": [
+              0.03999999538064003,
+              0.03999997302889824
+            ],
+            "gripper_target_m": [
+              0.03999999910593033,
+              0.03999999910593033
+            ],
+            "fingertip_gap_m": 0.07999999821186066,
+            "radial_error_m": 0.10715645551681519,
+            "left_height_error_m": 0.10553379356861115,
+            "right_height_error_m": 0.10894723236560822,
+            "stack_xy_m": 0.007856175303459167,
+            "stack_relative_height_m": 0.046796008944511414,
+            "lift_target_height_m": 0.0618000403046608,
+            "stability_speed_mps": 2.8894423849123996e-06,
+            "instantaneous_speed_mps": 0.004940527491271496,
+            "angular_speed_radps": 3.035281042684801e-05,
+            "instantaneous_angular_speed_radps": 0.0626407340168953,
+            "control_angular_speed_radps": 3.035281042684801e-05,
+            "stable_steps": 20,
+            "first_action": [
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              1.0
+            ],
+            "terminal_action": [
+              0.0,
+              0.0,
+              0.014702841639518738,
+              0.0,
+              1.0
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "final_stack": null,
+  "trace_env": null,
+  "trace": [],
+  "video": {
+    "path": "C:\\Users\\Mayn\\Documents\\Codex\\2026-09-17\\files-pasted-by-the-user-stage\\work\\phase3_closeout_clean_head_0b40604\\phase3_closeout_clean_head_seed61081.mp4",
+    "frames": 767,
+    "fps": 20.0,
+    "width": 640,
+    "height": 480,
+    "duration_s": 38.35,
+    "completed": true,
+    "error": null,
+    "env": 0,
+    "resolution": [
+      640,
+      480
+    ],
+    "camera": "v7_observer_camera",
+    "source": "observer-camera",
+    "used_for_vision": false,
+    "strict": true
+  }
+}

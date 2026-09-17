@@ -13,9 +13,17 @@ evidence does not prove that implementation from a clean source checkout: its
 physical summary names commit `94006de24ecdcb4725394f24edf36d8d9b4c23c1`
 and records a dirty worktree containing the then-uncommitted closeout source.
 
-The Recovery scope is therefore evidence provenance and clean-HEAD
-re-verification, not a second runtime implementation. Until that run passes,
-`PHASE 3 COMPLETE` and `READY_FOR_PHASE4` must remain false.
+The Recovery scope was therefore evidence provenance and clean-HEAD
+re-verification, not a second runtime implementation.
+
+## Recovery outcome
+
+Recovery passed from clean source commit
+`0b4060423fa226a4bb428a40b6b4961706359c12`. The replacement physical summary
+records a clean pre-run source snapshot, clean end-of-run Git state, verified
+runtime purity and V7 chain, stable physical success, 8/8 Skills, 7/7 handoffs,
+strict Vision, and a complete independently decoded video. The final decision
+is `PHASE 3 COMPLETE = YES` and `READY_FOR_PHASE4 = true`.
 
 ## Requirement comparison
 
@@ -58,4 +66,3 @@ Required changes are limited to pre-run provenance capture, evidence exporters,
 focused tests, and closeout documentation. This Recovery must not retrain,
 change success thresholds or physics, enable oracle/reference/recovery paths,
 run multiple seeds, or begin Phase 4.
-

@@ -29,14 +29,12 @@ Updated: 2026-09-17
   active `stage_vla` import blocker during physical evaluation, and a
   fail-closed runtime-purity condition in `--require_v7_chain`.
 
-## Phase 3 historical verification
+## Phase 3 clean-HEAD verification
 
-The results below came from the successful closeout run, but its summary
-records a dirty source worktree at commit `94006de`. They are recovery inputs,
-not final clean-HEAD proof. The implementation is restored on `main`; a new
-clean-HEAD physical verification is pending.
-
-- Full suite: **288 passed, 0 failed, 0 skipped** under `E:\work\IsaacLab` Isaac Sim Python.
+- Verified source commit:
+  `0b4060423fa226a4bb428a40b6b4961706359c12`.
+- Source worktree before the physical smoke: **clean**; source Git status `[]`.
+- Full suite: **291 passed, 0 failed, 0 skipped** under `E:\work\IsaacLab` Isaac Sim Python.
 - `compileall`: `src`, `tests`, `scripts`, and `tools` pass.
 - Dependency-boundary and evaluator-public-API guards pass.
 - Formal physical runtime V5 imports: **0**.
@@ -48,29 +46,30 @@ clean-HEAD physical verification is pending.
 - All eight locked checkpoints load with their expected hashes, retain action
   dimension 5, and produce maximum action error **0.0**.
 - Strict seed-61081 Vision + Video smoke: 1/1 physical task, 8/8 Skills, 7/7
-  exact handoffs, zero mid-episode resets, 730 valid Vision calls, zero invalid
+  exact handoffs, zero mid-episode resets, 729 valid Vision calls, zero invalid
   frames, zero oracle fallback, no reference/recovery calls,
   `runtime_purity.import_blocker_enabled=true`,
   `runtime_purity.verified=true`, and `v7_chain.verified=true`.
-- Independent MP4 decode: 768/768 frames, 640x480, all frames nonblank; decoded
+- Independent MP4 decode: 767/767 frames, 640x480, all frames nonblank; decoded
   pixel SHA-256
-  `97944f34b5adaed6642e07d13f082730eaa16f8e0c8d77980d83c3b419ec6fec`.
+  `8345c24593cfa76d984420f828ab91946043881fae0a6f167b7398972a6898e6`.
 
-## Historical evidence
+## Evidence
 
 - `docs/VENDOR_MIGRATION_PHASE3.md`
 - `PHASE3_CLOSEOUT_AUDIT.md`
-- `evidence/phase3_closeout_checkpoint_compatibility.json`
-- `evidence/phase3_closeout_runtime_purity.json`
-- `evidence/phase3_closeout_seed61081.summary.json`
-- `evidence/phase3_closeout_seed61081.mp4`
+- `PHASE3_CLOSEOUT_RECOVERY_REPORT.md`
+- `evidence/phase3_closeout_clean_head_checkpoint_compatibility.json`
+- `evidence/phase3_closeout_clean_head_runtime_purity.json`
+- `evidence/phase3_closeout_clean_head_seed61081.summary.json`
+- `evidence/phase3_closeout_clean_head_seed61081.mp4`
 - `docs/VALIDATION.md`
 
 ## Phase 3 acceptance
 
 | Item | Status | Evidence |
 |---|---|---|
-| Strict Vision, no oracle fallback | PASS | 730/730 valid calls; fallback count 0 |
+| Strict Vision, no oracle fallback | PASS | 729/729 valid calls; fallback count 0 |
 | Native SuccessChecker | PASS | parity tests and physical runtime |
 | Native Vision runtime | PASS | reader/detector/calibration parity and smoke |
 | Native action bridge | PASS | 8-Skill parity; max error `0.0` |
@@ -84,8 +83,7 @@ clean-HEAD physical verification is pending.
 | Loaded V5 modules | PASS | 0 in the isolated physical result |
 | Physical V5 import blocker | PASS | enabled for the complete physical run |
 | Canonical action-evaluation V5 adapter | PASS | absent from module and `__all__` |
-| Historical V5-isolated physical smoke | PASS | runtime purity and V7 chain verified in a dirty worktree |
-| Clean-HEAD V5-isolated physical smoke | PENDING | must be regenerated after source commit |
+| Clean-HEAD V5-isolated physical smoke | PASS | clean source/end state; runtime purity and V7 chain verified |
 
 ## Current limitations
 
@@ -107,6 +105,6 @@ V5-trained checkpoints are allowed. V5 historical/regression source is
 allowed. A V5 formal Python runtime dependency is forbidden and is now absent
 from the locked physical path.
 
-**PHASE 3 CLOSEOUT RECOVERY VERIFICATION PENDING**
+**PHASE 3 COMPLETE**
 
-`READY_FOR_PHASE4 = false`
+`READY_FOR_PHASE4 = true`
