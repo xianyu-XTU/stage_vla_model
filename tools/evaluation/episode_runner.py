@@ -15,7 +15,9 @@ from .cli import EvaluationPlan
 from .constants import ASSET_TO_VISION_LABEL, EXTRA_CUBE_COLORS
 from .data_collection import SkillDemonstrationBuffer, write_data_manifests
 from .debug_oracle import read_debug_oracle_local_positions
+from .provenance import collect_evidence_provenance
 from .result_writer import ResultContext, build_evaluation_result, write_json_result
+from .runtime_purity import audit_runtime_purity, install_v5_import_blocker
 from .task_evaluator import evaluate_task
 from .task_executor import ExecutionHelpers, TaskExecutionContext, execute_task
 from .vision_policy import VisionDetectionError, VisionFailPolicy, VisionPositionResolver
@@ -81,12 +83,25 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
     object_positions = plan.object_positions
     observer_camera_model = plan.observer_camera_model
 
+    try:
+        install_v5_import_blocker()
+    except RuntimeError:
+        write_json_result(out, {
+            "status": "failed",
+            "v7_chain": {"verified": False, "required": bool(args.require_v7_chain)},
+            "runtime_purity": audit_runtime_purity().as_dict(),
+            "provenance": collect_evidence_provenance(plan, repository_root=V7_ROOT),
+        })
+        raise
+
     app = app_launcher_class(args).app
     raw = env = None
     video_recorder = None
     recording_result = None
     vision_stats: dict[str, object] | None = None
     vision_seed_valid = None
+    output_module = None
+    reach_recovery_module = None
     try:
         import torch
         from stage_vla_v7.simulation.isaac_lab.known_size_environment import (
@@ -538,14 +553,20 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             relation.get("reach_recovery_steps_attempted", 0) > 0
             for relation in relation_results
         )
+        reference_skill_calls = output_module.reference_call_count
+        recovery_calls = reach_recovery_module.reference_call_count
         v7_audit = pipeline_action_source.audit()
+        runtime_purity = audit_runtime_purity().as_dict()
         v7_chain_verified = verify_v7_chain(
             use_vision=bool(args.use_vision),
             learned_reach=learned_reach,
             reference_skills=args.reference_skills,
             reach_reference_recovery_used=reach_reference_recovery_used,
+            reference_skill_calls=reference_skill_calls,
+            recovery_calls=recovery_calls,
             vision=vision_stats,
             pipeline_audit=v7_audit,
+            runtime_purity=runtime_purity,
         )
         if args.require_v7_chain and not v7_chain_verified:
             passed = False
@@ -572,6 +593,11 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             prepared=prepared,
             v7_audit=v7_audit,
             v7_chain_verified=v7_chain_verified,
+            runtime_purity=runtime_purity,
+            provenance=collect_evidence_provenance(plan, repository_root=V7_ROOT),
+            physical_success=task_evaluation.passed,
+            reference_skill_calls=reference_skill_calls,
+            recovery_calls=recovery_calls,
             passed=passed,
             vision_stats=vision_stats,
             vision_seed_valid=vision_seed_valid,
@@ -598,6 +624,7 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
         )
     except VisionDetectionError as exc:
         assert vision_stats is not None
+        runtime_purity = audit_runtime_purity().as_dict()
         failure_result = {
             "status": "failed",
             "failure": exc.as_dict(),
@@ -606,6 +633,14 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
                 "required": bool(args.require_v7_chain),
                 "command": command_text,
             },
+            "runtime_purity": runtime_purity,
+            "provenance": collect_evidence_provenance(plan, repository_root=V7_ROOT),
+            "reference_skill_calls": int(
+                getattr(output_module, "reference_call_count", 0)
+            ),
+            "recovery_calls": int(
+                getattr(reach_recovery_module, "reference_call_count", 0)
+            ),
             "vision": {
                 **vision_stats,
                 "seed_valid": (

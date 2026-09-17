@@ -1,30 +1,35 @@
 # Phase 3 V5 Runtime Migration
 
-Audit baseline: commit `947d27aab174067c8ed6e2fa38a0131226e19338`.
-Final audit date: 2026-09-16. The inventory below was regenerated from the
-current Python imports and physical evaluator call graph.
+Closeout baseline: `main` at
+`94006de24ecdcb4725394f24edf36d8d9b4c23c1`.
+Final audit date: 2026-09-17. The inventory below was regenerated from the
+current Python imports, import state, and physical evaluator call graph.
 
 ## Result
 
-Stage VLA V7 runtime migration is complete for the locked cube-policy physical
-path:
+Stage VLA V7 Phase 3 runtime isolation is complete for the locked cube-policy
+physical path:
 
-- formal `src/stage_vla_v7` and `tools/evaluation` physical runtime imports of
-  V5 Python modules: **0**;
+- formal `src/stage_vla_v7` V5 Python imports: **0**;
+- formal `tools/evaluation` V5 Python imports: **0**;
+- formal bootstrap V5 source paths: **0**;
+- loaded `stage_vla` / `stage_vla.*` modules in the physical smoke: **0**;
+- exposed V5 package paths in the physical smoke: **0**;
+- active V5 import blocker in the physical smoke: **enabled**;
+- canonical `stage_vla_v7.action.evaluation` V5 adapters: **0**;
 - evaluator calls to private environment methods: **0**;
 - evaluator mutations of protected environment state: **0**;
-- one lazy V5 import remains in
-  `action/evaluation/skill_evaluator.py`, reachable only through the explicit
-  `legacy_vectorized_skill_success` regression adapter: **LEGACY_ONLY**;
 - `vendor/stage_vla_v5` remains unchanged for provenance, regression oracles,
-  historical training, and the frozen evaluation JSON schema;
+  and historical training;
 - the eight V5-trained checkpoints remain external artifacts and were not
-  retrained or rewritten.
+  retrained or rewritten;
+- a newly generated, V5-isolated strict Vision + Video physical smoke passed
+  with runtime purity and the V7 chain both verified.
 
-`tools/evaluation/bootstrap.py` still makes the retained vendor source tree
-discoverable. Discoverability is not a runtime import: the verified evaluator
-never imports a V5 module. Parity tests add the vendor path explicitly and are
-outside the formal physical call graph.
+`tools/evaluation/bootstrap.py` now exposes only `repo/src`. It does not define
+`V5_ROOT`, inspect `STAGE_VLA_V5_ROOT`, or add `vendor/stage_vla_v5` to
+`sys.path`. Parity and migration tools obtain V5 only through explicit,
+regression-only setup outside the formal evaluator.
 
 ## Dependency count
 
@@ -39,10 +44,12 @@ were migrated and are listed separately below.
 | P1 native success plus Vision | 16 | success, RGB/depth, detector and calibration switched |
 | P2 action bridge plus native environment | 14 | action output and V5 VecEnv switched |
 | P3 helpers, configuration, collection and public environment API | 0 | final formal runtime |
+| P3 closeout runtime isolation | 0 | zero path exposure, zero loaded modules, canonical adapter removed |
 
-The final source-text count is one V5 import, classified `LEGACY_ONLY`, and the
-final formal-runtime count is zero. These two numbers are intentionally not
-conflated.
+The final direct V5-import count in both formal trees is zero. The only retained
+`legacy_vectorized_skill_success` implementation is the explicit migration
+oracle in `tools/migration/v5_success_adapter.py`; parity tests and migration
+tools are intentionally outside the formal runtime.
 
 ## Phase 2 dependency disposition
 
@@ -124,20 +131,40 @@ mutation of these protected fields.
 | Physical stack smoke | PASS, 1/1 |
 | V7 chain | PASS, 8/8 Skills and 7/7 exact handoffs |
 | Remaining V5 runtime imports | **0** |
+| Formal bootstrap exposes V5 path | **NO** |
+| Canonical action-evaluation V5 adapter | **NO** |
+| Loaded V5 module count | **0** |
+| Vendor path exposed at runtime | **NO** |
+| Runtime purity | **PASS** |
+| V5 import blocker | **ENABLED** |
+| V5-isolated physical smoke | **PASS** |
 
 Final regression evidence:
 
-- `270` tests passed.
-- `evidence/phase3_checkpoint_compatibility.json`: all eight checkpoints,
+- `288` tests passed, `0` failed, `0` skipped.
+- `evidence/phase3_closeout_checkpoint_compatibility.json`: all eight checkpoints,
   action dimension 5, maximum absolute error `0.0`.
-- `evidence/phase3_runtime_migration_seed61081.summary.json`: tracked compact
-  Phase-3 audit and physical evidence.
-- `outputs/phase3_p3_public_env_api_seed61081.json`: strict Vision, 730 valid
+- `evidence/phase3_closeout_runtime_purity.json`: a standalone pre-runtime
+  snapshot with no loaded V5 module, no exposed V5 path, and `verified=true`;
+  its blocker field is false because this audit-only command does not launch a
+  physical evaluation.
+- `evidence/phase3_closeout_seed61081.summary.json`: strict Vision, 730 valid
   calls, zero invalid frames, zero oracle fallback, no reference/recovery,
-  and `v7_chain.verified=true`.
-- `outputs/phase3_p3_public_env_api_seed61081.mp4`: independently decoded
-  `768/768` frames at 640x480; decoded pixel SHA-256
-  `a4a94a8f7511c4c36220f9a43a830dfa6e8d49b6253f54915418d4e2a4c93d71`.
+  `runtime_purity.import_blocker_enabled=true`,
+  `runtime_purity.verified=true`, and `v7_chain.verified=true`.
+- `evidence/phase3_closeout_seed61081.mp4`: independently decoded `768/768`
+  nonblank frames at 640x480; decoded pixel SHA-256
+  `97944f34b5adaed6642e07d13f082730eaa16f8e0c8d77980d83c3b419ec6fec`.
+
+The result JSON records the baseline Git commit, UTC timestamp, working-tree
+state, artifact-lock path and SHA-256, and all eight actual checkpoint hashes.
+
+V5-trained checkpoints are allowed. V5 historical/regression source is
+allowed. A V5 formal Python runtime dependency is forbidden.
 
 The smoke proves preserved wiring and one locked seed. It is not a 20/50/100
 seed success-rate claim and does not extend the trained cube policy domain.
+
+**PHASE 3 COMPLETE**
+
+`READY_FOR_PHASE4 = true`

@@ -60,7 +60,8 @@ bundle construction fail.
 full-task/stable-stack evaluation, metrics, and reporting. Training and
 Simulation call this layer rather than defining new criteria.
 
-The current physical V5 vector environment uses tensor-specific terminal
-logic. `legacy_vectorized_skill_success` is an explicit adapter to that frozen
-implementation, preserving current physical results while keeping the call
-site centralized. It is not a fallback controller.
+The physical runtime uses native V7 tensor predicates and
+`SuccessChecker.evaluate_batch`. The frozen V5 tensor implementation is
+available only as the explicit regression oracle in
+`tools/migration/v5_success_adapter.py`; it is absent from the canonical Action
+API and is not a fallback controller.

@@ -1,5 +1,5 @@
 {
-  "schema": "stage_vla_v5.asset_layout_batch.v1",
+  "schema": "stage_vla_v7.asset_layout_batch.v1",
   "mode": "frozen_v7_smoke",
   "seed": 61081,
   "num_envs": 1,

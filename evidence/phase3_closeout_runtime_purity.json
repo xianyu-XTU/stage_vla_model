@@ -1,0 +1,14 @@
+{
+  "schema": "stage_vla_v7.phase3_runtime_purity.v1",
+  "generated_at_utc": "2026-09-17T10:47:24.983224+00:00",
+  "git_commit": "94006de24ecdcb4725394f24edf36d8d9b4c23c1",
+  "runtime_purity": {
+    "vendor_path_exposed": false,
+    "loaded_v5_module_count": 0,
+    "loaded_v5_modules": [],
+    "exposed_vendor_paths": [],
+    "v5_root_env_set": false,
+    "import_blocker_enabled": false,
+    "verified": true
+  }
+}

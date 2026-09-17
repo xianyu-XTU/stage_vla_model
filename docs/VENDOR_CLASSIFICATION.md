@@ -7,9 +7,9 @@ No vendor file is classified for deletion.
 
 | Vendor area | Current caller | Handling | Status |
 |---|---|---|---|
-| `stage_vla/rl/v5_skill_contracts.py` | explicit regression adapter and parity tests | retained success oracle | LEGACY_ONLY |
+| `stage_vla/rl/v5_skill_contracts.py` | explicit migration adapter and parity tests | retained success oracle | LEGACY_ONLY |
 | Python helpers covered by Phase-3 parity tests | tests only | retained comparison oracle | LEGACY_ONLY |
-| `config/v5_generalized_cube_eval.json` | smoke runner as frozen input data | schema/provenance input, not imported code | KEEP |
+| `config/v5_generalized_cube_eval.json` | regression tests only | historical schema/provenance input | LEGACY_ONLY |
 | historical training tools and datasets | explicit training adapters or no current caller | retained; no training migration claimed | KEEP |
 | checkpoint provenance and original source | documentation and audits | retained | KEEP |
 | all other vendor packages/tools | historical or unproven capabilities | retained conservatively | KEEP |
@@ -18,11 +18,14 @@ No vendor file is classified for deletion.
 
 - Direct V5 Python modules in the Phase-2 physical runtime: 19.
 - Direct V5 Python modules in the final formal physical runtime: 0.
-- V5 imports present anywhere in V7-owned source: 1 lazy import, reachable only
-  through `legacy_vectorized_skill_success` and classified `LEGACY_ONLY`.
+- V5 imports present in formal V7-owned source: 0.
 - V5 imports in parity tests: intentional and outside runtime.
-- Vendor root insertion by evaluation bootstrap: path discoverability only;
-  the verified runtime imports no V5 module.
+- V5 import in `tools/migration/v5_success_adapter.py`: explicit
+  regression-only oracle, outside runtime.
+- Vendor root insertion by evaluation bootstrap: 0; the bootstrap exposes only
+  `repo/src`.
+- Isolated physical smoke: active V5 import blocker, 0 loaded V5 modules, and
+  no exposed V5 package path.
 
 The module-level migration targets and parity/smoke evidence are recorded in
 `docs/VENDOR_MIGRATION_PHASE3.md`.

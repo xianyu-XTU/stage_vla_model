@@ -82,12 +82,22 @@ def test_require_v7_chain_rejects_oracle_fallback() -> None:
         learned_reach=True,
         reference_skills=(),
         reach_reference_recovery_used=False,
+        reference_skill_calls=0,
+        recovery_calls=0,
         vision={
+            "strict_mode": True,
             "v7_service_calls": 8,
             "invalid_frames": 1,
             "oracle_fallback_count": 1,
         },
         pipeline_audit={"all_prepared_skills_exercised": True},
+        runtime_purity={
+            "vendor_path_exposed": False,
+            "loaded_v5_module_count": 0,
+            "loaded_v5_modules": [],
+            "import_blocker_enabled": True,
+            "verified": True,
+        },
     )
 
     assert verified is False

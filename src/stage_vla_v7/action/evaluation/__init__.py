@@ -7,7 +7,7 @@ from .physical_runtime import (
     evaluate_physical_skill,
 )
 from .report import evaluation_report
-from .skill_evaluator import SkillEvaluator, legacy_vectorized_skill_success
+from .skill_evaluator import SkillEvaluator
 from .success_checker import (
     SkillEvaluationState,
     SkillTolerances,
@@ -30,7 +30,6 @@ __all__ = [
     "TaskEvaluator",
     "evaluation_report",
     "evaluate_physical_skill",
-    "legacy_vectorized_skill_success",
     "vectorized_skill_failure",
     "vectorized_skill_success",
     "wilson_interval",

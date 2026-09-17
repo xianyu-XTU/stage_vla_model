@@ -98,6 +98,13 @@ uses only its public `observe`, `configure_skill`, external-step synchronization
 status, and diagnostics surface; AST tests reject private-method access and
 direct mutation of protected environment state.
 
+The three V5 concepts have intentionally different boundaries:
+
+- V5-trained checkpoint provenance is accepted by the V7 TorchScript loader.
+- V5 historical/regression source remains below `vendor/stage_vla_v5` and may
+  be exposed only by an explicit migration/test bootstrap.
+- A V5 formal Python runtime dependency is forbidden.
+
 ## Camera and recording flow
 
 ```text
@@ -128,6 +135,9 @@ by responsibility:
   handoffs;
 - `task_evaluator.py`: relation and final-stack aggregation;
 - `data_collection.py` and `trace.py`: optional output collection;
+- `runtime_purity.py`: exact loaded-module/V5-source-path audit and active V5
+  import blocker;
+- `provenance.py`: commit, artifact-lock, and checkpoint identities;
 - `result_writer.py`: stable result schema and JSON persistence.
 
 No evaluation module exceeds 700 lines. Environment construction, layout
@@ -145,8 +155,20 @@ Vision-invalid frames, zero oracle fallback, a valid visual path, and a
 physically successful task.
 
 The physical environment calls native V7 `SuccessChecker.evaluate_batch` for
-vectorized terminal predicates. `legacy_vectorized_skill_success` remains only
-as an explicit regression oracle and is not reachable from the formal runtime.
+vectorized terminal predicates. The formal bootstrap adds only `repo/src` and
+does not read `STAGE_VLA_V5_ROOT`. The former
+`legacy_vectorized_skill_success` oracle lives under `tools/migration`, behind
+an explicit, temporary regression path context, and is absent from the
+canonical action-evaluation API.
+
+Before Isaac Lab starts, `runtime_purity.py` rejects dirty startup state and
+installs a meta-path blocker for `stage_vla` and `stage_vla.*`; it does not
+block `stage_vla_v7`. At the end of every formal physical run, it also checks
+both `sys.modules` and `sys.path`. `--require_v7_chain` fails closed unless the
+blocker remains installed, the V5 module count is zero, no V5 source path is
+exposed, strict Vision has no invalid or oracle frame, no reference/recovery
+controller ran, and all prepared Skills were exercised. The same purity object
+is persisted in the result JSON.
 
 ## Replaceability
 

@@ -42,6 +42,7 @@ class ActionOutputModule:
         self.reference_skills = frozenset(
             Skill(getattr(skill, "value", skill)) for skill in reference_skills
         )
+        self.reference_call_count = 0
 
     def emit(
         self,
@@ -88,6 +89,7 @@ class ActionOutputModule:
             self._validate_action(canonical, teacher, obs.shape[0], "reference")
 
         if use_reference:
+            self.reference_call_count += 1
             candidate = teacher
             source = "reference"
         else:

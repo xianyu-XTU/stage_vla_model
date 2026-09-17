@@ -247,11 +247,13 @@ gripper diagnostics, object size, current Skill, and stability-source access.
 Static tests now reject private environment calls and direct protected-state
 mutation from `tools/evaluation`.
 
-Final Phase-3 evidence is 270 passing tests, 8/8 checkpoint compatibility with
-maximum error `0.0`, zero formal V5 runtime imports, and a strict seed-61081
-physical run with 8/8 Skills, 7/7 exact handoffs, 730/730 valid Vision calls,
-zero oracle fallback, and a fully decoded 768-frame Observer MP4. The one V5
-source import that remains is a lazy `LEGACY_ONLY` regression adapter.
+Final Phase-3 closeout evidence is 288 passing tests, 8/8 checkpoint
+compatibility with maximum error `0.0`, zero formal V5 runtime imports, zero V5
+path exposure, and zero loaded V5 modules. The strict seed-61081 physical run
+kept the V5 import blocker enabled, completed 8/8 Skills, 7/7 exact handoffs,
+730/730 valid Vision calls, zero oracle fallback, and a fully decoded 768-frame
+Observer MP4. The retained V5 success import now exists only in an explicit
+`tools/migration` regression adapter outside the formal runtime.
 
 ## Phase-2 complete scoped tree
 

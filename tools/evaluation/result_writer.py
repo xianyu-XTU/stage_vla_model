@@ -19,6 +19,11 @@ class ResultContext:
     prepared: Any
     v7_audit: Mapping[str, object]
     v7_chain_verified: bool
+    runtime_purity: Mapping[str, object]
+    provenance: Mapping[str, object]
+    physical_success: bool
+    reference_skill_calls: int
+    recovery_calls: int
     passed: bool
     vision_stats: Mapping[str, object]
     vision_seed_valid: Any
@@ -66,6 +71,38 @@ def build_evaluation_result(context: ResultContext) -> dict[str, object]:
                 for relation in context.prepared.language.plan.execution_relations
             ],
             **context.v7_audit,
+        },
+        "runtime_purity": dict(context.runtime_purity),
+        "provenance": dict(context.provenance),
+        "closeout": {
+            "physical_success": bool(context.physical_success),
+            "stable_success": bool(
+                context.relation_results
+                and all(item.get("passed") is True for item in context.relation_results)
+            ),
+            "skills_exercised": sum(
+                int(rows) > 0
+                for rows in context.v7_audit.get("inference_rows_by_skill", {}).values()
+            ),
+            "skill_handoffs": sum(
+                len(item.get("handoffs", ())) for item in context.relation_results
+            ),
+            "vision_service_calls": int(
+                context.vision_stats.get("v7_service_calls", 0)
+            ),
+            "invalid_vision_frames": int(
+                context.vision_stats.get("invalid_frames", 0)
+            ),
+            "oracle_fallback_count": int(
+                context.vision_stats.get("oracle_fallback_count", 0)
+            ),
+            "reference_skill_calls": int(context.reference_skill_calls),
+            "recovery_calls": int(context.recovery_calls),
+            "runtime_purity_verified": context.runtime_purity.get("verified") is True,
+            "v5_import_blocker_enabled": (
+                context.runtime_purity.get("import_blocker_enabled") is True
+            ),
+            "v7_chain_verified": context.v7_chain_verified,
         },
         "scope": (
             "V7 language + V7 RGB-D service + V7 pipeline-routed TorchScript actions; "

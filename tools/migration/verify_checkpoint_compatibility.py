@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
+import hashlib
 import json
+import math
 from pathlib import Path
+import subprocess
 import sys
 
 
@@ -25,6 +29,25 @@ from stage_vla_v7.interfaces import (  # noqa: E402
     RobotAction,
     SKILL_SEQUENCE,
 )
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest().upper()
+
+
+def _git_commit() -> str:
+    completed = subprocess.run(
+        ["git", "-C", str(REPOSITORY_ROOT), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    return completed.stdout.strip()
 
 
 def main() -> None:
@@ -62,6 +85,7 @@ def main() -> None:
     projector = SafetyProjector()
     comparisons: dict[str, object] = {}
     all_compatible = True
+    all_finite = True
 
     for skill in SKILL_SEQUENCE:
         record = records[skill.value.lower()]
@@ -83,14 +107,17 @@ def main() -> None:
                 profile,
             )
         ).action
+        finite_output = all(math.isfinite(value) for value in actual.values)
         max_abs_error = max(abs(left - right) for left, right in zip(expected.values, actual.values))
-        compatible = max_abs_error <= 1e-7
+        compatible = finite_output and max_abs_error <= 1e-7
         all_compatible &= compatible
+        all_finite &= finite_output
         comparisons[skill.value] = {
             "checkpoint": str(checkpoint),
             "sha256": record["sha256"],
             "observation_dim": dimension,
             "action_dim": len(actual.values),
+            "finite_output": finite_output,
             "legacy_projected_action": expected.values,
             "refactored_action": actual.values,
             "max_abs_error": max_abs_error,
@@ -99,9 +126,19 @@ def main() -> None:
 
     report = {
         "schema": "stage_vla_v7.checkpoint_compatibility.v1",
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "git_commit": _git_commit(),
         "artifact_bundle": lock["bundle"],
+        "artifact_lock": {
+            "path": str(args.lock.resolve()),
+            "sha256": _sha256(args.lock.resolve()),
+        },
         "comparison": "direct_v5_torchscript_plus_frozen_safety_vs_refactored_action_service",
         "tolerance": 1e-7,
+        "loaded_checkpoints": len(comparisons),
+        "total_checkpoints": len(SKILL_SEQUENCE),
+        "action_dim": 5,
+        "all_finite": all_finite,
         "all_compatible": all_compatible,
         "skills": comparisons,
     }

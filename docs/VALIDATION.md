@@ -1,6 +1,6 @@
 # V7 validation record
 
-Validation date: 2026-09-16
+Validation date: 2026-09-17
 
 ## Environment
 
@@ -15,7 +15,7 @@ Validation date: 2026-09-16
 ## Automated regression
 
 ```text
-270 passed
+288 passed, 0 failed, 0 skipped
 ```
 
 The suite covers public contracts, dependency boundaries, parsing and provider
@@ -33,10 +33,22 @@ protected environment bookkeeping.
 ## Runtime dependency audit
 
 The Phase 2 baseline directly imported 19 V5 Python module paths. The final
-physical evaluator call graph imports none. A single lazy source import remains
-inside `legacy_vectorized_skill_success`; it is a regression-only oracle and is
-never selected by the physical runtime. Parity tests intentionally import V5
-implementations from `vendor/stage_vla_v5`.
+physical evaluator call graph imports none. Its bootstrap exposes only
+`repo/src`; it neither reads `STAGE_VLA_V5_ROOT` nor inserts a V5 tree.
+`stage_vla_v7.action.evaluation` no longer imports or exports a V5 adapter.
+The regression-only `legacy_vectorized_skill_success` moved to
+`tools/migration/v5_success_adapter.py` and requires explicit V5 reference-path
+setup.
+
+Static AST guards check exact `stage_vla` imports without misclassifying
+`stage_vla_v7`. Sanitized subprocess guards import `stage_vla_v7`,
+`tools.evaluation.cli`, and `tools.evaluation.episode_runner` with a meta-path
+V5 blocker. The physical evaluator installs the same exact-name blocker before
+Isaac Lab starts and keeps it installed for the full run. Runtime auditing
+independently checks `sys.modules` and `sys.path`. The isolated physical result
+records zero loaded V5 modules, no exposed V5 path,
+`runtime_purity.import_blocker_enabled=true`, and
+`runtime_purity.verified=true`.
 
 See `docs/VENDOR_MIGRATION_PHASE3.md` for the complete module-by-module audit.
 
@@ -58,7 +70,7 @@ and compared direct TorchScript plus frozen safety with the V7
 | RETREAT | 55 | 5 | 0.0 |
 
 The machine-readable result is
-`evidence/phase3_checkpoint_compatibility.json`.
+`evidence/phase3_closeout_checkpoint_compatibility.json`.
 
 ## Final physical smoke
 
@@ -67,13 +79,17 @@ real policies, the required V7 audit gate, the Observer camera, strict MP4
 recording, and no reference or recovery controller.
 
 ```powershell
-scripts\smoke\run_v7_smoke.ps1 -IsaacLabRoot E:\work\IsaacLab -ArtifactRoot E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 -Calibration E:\stage_vla_v5\outputs\vision_rgbd_mapping_calibration_train_20260910.json -Output outputs\phase3_p3_public_env_api_seed61081.json -Video -VideoPath outputs\phase3_p3_public_env_api_seed61081.mp4 -Headless
+scripts\smoke\run_v7_smoke.ps1 -IsaacLabRoot E:\work\IsaacLab -ArtifactRoot E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 -Calibration E:\stage_vla_v5\outputs\vision_rgbd_mapping_calibration_train_20260910.json -Output evidence\phase3_closeout_seed61081.summary.json -Video -VideoPath evidence\phase3_closeout_seed61081.mp4 -Headless
 ```
 
 | Check | Result |
 |---|---:|
 | Physical task | 1/1 passed |
 | V7 chain gate | passed |
+| Runtime purity gate | passed |
+| V5 import blocker | enabled |
+| Loaded V5 modules | 0 |
+| Vendor path exposed | false |
 | Prepared Skill tokens | 8/8 |
 | State-exact handoffs | 7/7 |
 | Mid-episode resets | 0 |
@@ -95,15 +111,17 @@ of the recorder:
 
 ```text
 decoded frames: 768 / 768
+nonblank frames: 768 / 768
 resolution: 640 x 480
-minimum frame standard deviation: 62.16835394099387
-maximum frame standard deviation: 67.63165749786386
+frame rate: 20 FPS
+minimum per-frame pixel range: 255
+minimum per-frame standard deviation: 62.16488193909765
 decoded pixel SHA-256:
-a4a94a8f7511c4c36220f9a43a830dfa6e8d49b6253f54915418d4e2a4c93d71
+97944f34b5adaed6642e07d13f082730eaa16f8e0c8d77980d83c3b419ec6fec
 ```
 
-The positive per-frame standard-deviation floor rejects an all-black or blank
-frame. This decode check is independent of the frame count written into the
+Every decoded frame had nonzero pixel range, rejecting all-black or constant
+frames. This decode check is independent of the frame count written into the
 evaluation JSON.
 
 ## Reproducible commands
@@ -121,8 +139,16 @@ E:\work\IsaacLab\_isaac_sim\python.bat -m pytest tests
 E:\work\IsaacLab\_isaac_sim\python.bat -m compileall -q src tests scripts tools
 
 # Eight-checkpoint compatibility
-E:\work\IsaacLab\_isaac_sim\python.bat tools\migration\verify_checkpoint_compatibility.py --artifact-root E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 --lock config\artifacts.lock.json --output evidence\phase3_checkpoint_compatibility.json
+E:\work\IsaacLab\_isaac_sim\python.bat tools\migration\verify_checkpoint_compatibility.py --artifact-root E:\stage_vla_v5\outputs\v5_generalized_cube_bc_v1 --lock config\artifacts.lock.json --output evidence\phase3_closeout_checkpoint_compatibility.json
+
+# V5-isolated runtime purity snapshot
+E:\work\IsaacLab\_isaac_sim\python.bat -m tools.evaluation.export_runtime_purity --output evidence\phase3_closeout_runtime_purity.json --require-pure
 ```
+
+The standalone snapshot audits module/path purity without launching the
+evaluator, so it records `import_blocker_enabled=false`. The physical smoke
+summary is the authoritative guard evidence and records the blocker as enabled
+for the complete run.
 
 ## Claim boundary
 
@@ -131,3 +157,7 @@ checkpoint/action compatibility, preserved physical handoffs, strict Vision,
 and a complete observer recording for one seed. It does not claim new weights,
 non-cube policy support, fully visual proprioception/contact feedback, or a
 multi-seed success rate.
+
+V5-trained checkpoints and retained historical/regression source are allowed;
+a V5 formal runtime dependency is not. All closeout gates pass, so
+`READY_FOR_PHASE4 = true`.

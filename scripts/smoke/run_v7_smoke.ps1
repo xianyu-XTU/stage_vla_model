@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $python = Join-Path $IsaacLabRoot "_isaac_sim\python.bat"
 $evaluator = Join-Path $repoRoot "tools\eval_v7_multicube_chain.py"
-$config = Join-Path $repoRoot "vendor\stage_vla_v5\config\v5_generalized_cube_eval.json"
+$config = Join-Path $repoRoot "config\evaluation\known_size_cube.json"
 $layout = Join-Path $repoRoot "config\simulation\smoke_layout_seed61081.json"
 $artifactLock = Join-Path $repoRoot "config\artifacts.lock.json"
 if (-not $Output) {
@@ -74,7 +74,11 @@ if ($Headless) {
 }
 
 $previousEncodedCommand = $env:STAGE_VLA_COMMAND_UTF8_BASE64
+$previousV5Root = $env:STAGE_VLA_V5_ROOT
+$previousPythonPath = $env:PYTHONPATH
 try {
+    Remove-Item Env:STAGE_VLA_V5_ROOT -ErrorAction SilentlyContinue
+    $env:PYTHONPATH = ""
     # ASCII Base64 survives PowerShell -> cmd.exe -> kit.exe without code-page loss.
     $env:STAGE_VLA_COMMAND_UTF8_BASE64 = (
         "5oqK57qi6Imy5pa55Z2X5pS+5Yiw6JOd6Imy5pa55Z2X5LiK"
@@ -89,13 +93,32 @@ finally {
     else {
         $env:STAGE_VLA_COMMAND_UTF8_BASE64 = $previousEncodedCommand
     }
+    if ($null -eq $previousV5Root) {
+        Remove-Item Env:STAGE_VLA_V5_ROOT -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:STAGE_VLA_V5_ROOT = $previousV5Root
+    }
+    if ($null -eq $previousPythonPath) {
+        Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+    }
+    else {
+        $env:PYTHONPATH = $previousPythonPath
+    }
 }
 if ($smokeExitCode -ne 0) {
     throw "V7 physical smoke failed with exit code $smokeExitCode"
 }
 
 $result = Get-Content -LiteralPath $Output -Raw -Encoding UTF8 | ConvertFrom-Json
-if ($result.status -ne "passed" -or -not $result.v7_chain.verified) {
+if (
+    $result.status -ne "passed" `
+    -or -not $result.v7_chain.verified `
+    -or -not $result.runtime_purity.verified `
+    -or -not $result.runtime_purity.import_blocker_enabled `
+    -or $result.runtime_purity.vendor_path_exposed `
+    -or $result.runtime_purity.loaded_v5_module_count -ne 0
+) {
     throw "V7 output did not pass the physical and chain gates: $Output"
 }
 if ($Video) {
