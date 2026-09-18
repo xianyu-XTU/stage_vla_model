@@ -91,3 +91,27 @@ def test_wilson_interval_has_expected_bounds() -> None:
     low, high = wilson_interval(9, 20)
     assert low == pytest.approx(0.2582, abs=1e-4)
     assert high == pytest.approx(0.6579, abs=1e-4)
+
+
+def test_strict_vision_exception_overrides_stale_seed_valid() -> None:
+    manifest = generate_layout_manifest(seed=19, layout_count=2)
+    result = {
+        "status": "failed",
+        "failure": {
+            "stage": "VISION",
+            "failed_environments": [1],
+        },
+        "v7_chain": {"verified": False},
+        "runtime_purity": {"verified": True},
+        "vision": {
+            "strict_mode": True,
+            "seed_valid": [True, True],
+            "invalid_frames": 1,
+            "oracle_fallback_count": 0,
+        },
+    }
+    cases = extract_batch_cases(result, manifest, result_path="vision.json")
+    assert cases[0]["vision_valid"] is True
+    assert cases[0]["first_failure_skill"] == "RUNTIME_ERROR"
+    assert cases[1]["vision_valid"] is False
+    assert cases[1]["first_failure_skill"] == "VISION"

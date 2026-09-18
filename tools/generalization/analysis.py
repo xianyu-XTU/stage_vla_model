@@ -180,10 +180,10 @@ def extract_batch_cases(
         object_xyz = list(positions[object_asset][env_index])
         support_xyz = list(positions[support_asset][env_index])
         runtime_error = relation is None and env_index not in failed_vision_envs
-        vision_valid = (
+        vision_valid = env_index not in failed_vision_envs and (
             bool(seed_valid[env_index])
             if env_index < len(seed_valid)
-            else env_index not in failed_vision_envs and failure_stage != "VISION"
+            else failure_stage != "VISION"
         )
         skill_state: dict[str, dict[str, object]] = {}
         reach_success = env_index in stage_rows["GRASP"]
@@ -273,6 +273,15 @@ def extract_batch_cases(
             },
             "first_failure_skill": first_failure,
             "failure_type": _failure_type(first_failure, failed_row, thresholds),
+            "failure_reason": (
+                "batch_aborted_by_peer_strict_vision_failure"
+                if runtime_error and failure_stage == "VISION"
+                else (
+                    str(failure.get("message", "runtime exception aborted evaluation"))
+                    if runtime_error and isinstance(failure, Mapping)
+                    else None
+                )
+            ),
             "evaluation_result_path": result_path,
         }
         cases.append(case)
@@ -360,6 +369,7 @@ def aggregate_cases(cases: Sequence[Mapping[str, object]]) -> dict[str, object]:
         "stable_success_rate": stable / total,
         "stable_success_wilson_95": list(stable_ci),
         "v7_chain_valid_count": sum(bool(case["v7_chain_verified"]) for case in cases),
+        "strict_vision_count": sum(bool(case["strict_vision"]) for case in cases),
         "vision_valid_count": sum(bool(case["vision_valid"]) for case in cases),
         "runtime_purity_valid_count": sum(
             bool(case["runtime_purity_verified"]) for case in cases

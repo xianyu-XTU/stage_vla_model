@@ -217,8 +217,10 @@ def _run_single(
         _read_json(manifest_path),
         result_path=str(result_path),
     )[0]
-    write_json(directory / "trace.json", raw.get("trace", []))
-    return raw, replay_case, directory / "trace.json", video_path
+    trace_payload = raw.get("trace", [])
+    trace_json = write_json(directory / "trace.json", trace_payload)
+    trace_path = trace_json if trace_payload else directory / "evaluator.log"
+    return raw, replay_case, trace_path, video_path
 
 
 def _percentage(value: float) -> str:
@@ -250,14 +252,23 @@ def _render_report(
     ]
     bottleneck = min(bottleneck_candidates, key=lambda item: item[1])[0]
     failures = [case for case in cases if not case["stable_success"]]
+    replay_passes = sum(replay["single_result"] == "PASS" for replay in replays)
+    replay_vision_failures = sum(
+        replay["single_first_failure"] == "VISION" for replay in replays
+    )
+    replay_resolved_successes = int(aggregate["stable_success_count"]) + replay_passes
+    lock_hash = (
+        artifact_lock.get("sha256")
+        if isinstance(artifact_lock, Mapping)
+        else artifact_lock
+    )
     lines = [
         "# Phase 4-A Random Layout Generalization Pilot",
         "",
         "## A. Experiment Configuration",
         "",
         f"- Source commit: `{source_commit}`",
-        f"- Artifact lock: `{artifact_lock}`",
-        f"- Checkpoint hashes: `{json.dumps(checkpoint_hashes, sort_keys=True)}`",
+        f"- Artifact lock SHA-256: `{lock_hash}`",
         f"- Layout manifest: `{manifest_path}`",
         f"- Layout seed: `{manifest['seed']}`",
         f"- Layouts: `{manifest['layout_count']}`",
@@ -266,23 +277,40 @@ def _render_report(
         "- Chain: all eight learned checkpoints; `--require_v7_chain` enabled",
         "- Reference Skills and recovery: disabled",
         "",
+        "Checkpoint SHA-256 values:",
+        "",
+        "| Skill | SHA-256 |",
+        "|---|---|",
+    ]
+    if isinstance(checkpoint_hashes, Mapping):
+        for skill, record in sorted(checkpoint_hashes.items()):
+            digest = record.get("sha256") if isinstance(record, Mapping) else record
+            lines.append(f"| {skill} | `{digest}` |")
+    lines.extend([
+        "",
         "## B. Overall Results",
         "",
         "| Metric | Result |",
         "|---|---:|",
-        f"| Physical success | {aggregate['physical_success_count']} / {aggregate['layout_count']} ({_percentage(aggregate['physical_success_rate'])}) |",
+        f"| Batch fail-closed physical success | {aggregate['physical_success_count']} / {aggregate['layout_count']} ({_percentage(aggregate['physical_success_rate'])}) |",
         f"| Physical Wilson 95% CI | [{_percentage(aggregate['physical_success_wilson_95'][0])}, {_percentage(aggregate['physical_success_wilson_95'][1])}] |",
-        f"| Stable success | {aggregate['stable_success_count']} / {aggregate['layout_count']} ({_percentage(aggregate['stable_success_rate'])}) |",
+        f"| Batch fail-closed stable success | {aggregate['stable_success_count']} / {aggregate['layout_count']} ({_percentage(aggregate['stable_success_rate'])}) |",
         f"| Stable Wilson 95% CI | [{_percentage(aggregate['stable_success_wilson_95'][0])}, {_percentage(aggregate['stable_success_wilson_95'][1])}] |",
         f"| V7-chain verified | {aggregate['v7_chain_valid_count']} / {aggregate['layout_count']} |",
         f"| Vision valid | {aggregate['vision_valid_count']} / {aggregate['layout_count']} |",
         f"| Runtime purity valid | {aggregate['runtime_purity_valid_count']} / {aggregate['layout_count']} |",
+        f"| Replay-resolved stable success | {replay_resolved_successes} / {aggregate['layout_count']} |",
+        f"| Replay-resolved strict Vision failure | {replay_vision_failures} / {aggregate['layout_count']} |",
+        "",
+        "The replay-resolved rows replace only original failed cases with their",
+        "single-environment outcome. They diagnose batch propagation; they are not",
+        "a replacement for the frozen batch success estimate.",
         "",
         "## C. Skill Funnel",
         "",
         "| Skill | Entered | Success | Conditional success |",
         "|---|---:|---:|---:|",
-    ]
+    ])
     for skill in SKILLS:
         values = funnel[skill]
         rate = values["conditional_success_rate"]
@@ -359,11 +387,14 @@ def _render_report(
         "",
         "## H. Conclusion",
         "",
-        f"- Largest measured Skill bottleneck: **{bottleneck}**.",
+        "- Overall pilot bottleneck: **strict Vision invalid detections and batch fail-closed propagation**.",
+        f"- Lowest observed conditional Skill rate among completed telemetry: **{bottleneck}**.",
         f"- Runtime/Vision infrastructure: **{'PASS' if infrastructure_pass else 'FAIL'}**.",
         f"- Proceed to the frozen 50-case evaluation: **{'yes' if ready_for_50 else 'no'}**.",
         "",
-        "The observed rate is a 20-layout pilot estimate, not the model's exact true rate.",
+        "The observed batch rate includes peer-triggered fail-closed aborts and is not an",
+        "unbiased estimate of the policy-only success rate. The Wilson interval describes",
+        "this measured batch outcome, not the model's exact true rate.",
         "No policy, threshold, reward, Vision fallback, or physical task definition was changed.",
         "",
         "## Acceptance Table",
@@ -373,7 +404,8 @@ def _render_report(
         f"Layout manifest                    {manifest_path}",
         f"Layout count                       {aggregate['layout_count']}",
         f"Batch size                         {batch_size}",
-        f"Strict Vision                      {'PASS' if aggregate['vision_valid_count'] == aggregate['layout_count'] else 'FAIL'}",
+        f"Strict Vision policy               {'PASS' if aggregate['strict_vision_count'] == aggregate['layout_count'] else 'FAIL'}",
+        f"Vision-valid cases                 {aggregate['vision_valid_count']} / {aggregate['layout_count']}",
         f"Runtime purity                     {'PASS' if aggregate['runtime_purity_valid_count'] == aggregate['layout_count'] else 'FAIL'}",
         f"Oracle fallback                    {aggregate['oracle_fallback_count']}",
         f"Reference calls                    {aggregate['reference_skill_calls']}",
@@ -393,11 +425,16 @@ def _render_report(
     lines.extend(["", "First failure:"])
     for name in (*SKILLS, "VISION", "FINAL_STABILITY", "UNKNOWN"):
         lines.append(f"{name:35s} {failure_distribution[name]}")
+    lines.append(f"{'RUNTIME_ERROR':35s} {failure_distribution['RUNTIME_ERROR']}")
     reproduced = sum(bool(replay["reproduced"]) for replay in replays)
+    replay_failures = sum(replay["single_result"] == "FAIL" for replay in replays)
+    valid_videos = sum(bool(replay["video"]["valid"]) for replay in replays)
     lines.extend([
         "",
         f"Failed cases replayed              {len(replays)} / {len(failures)}",
+        f"Single-env replay failures         {replay_failures} / {len(failures)}",
         f"Failures reproduced                {reproduced} / {len(failures)}",
+        f"Replay videos valid                {valid_videos} / {len(replays)}",
         f"Evaluation infrastructure          {'PASS' if infrastructure_pass else 'FAIL'}",
         f"READY_FOR_PHASE4_50                {str(ready_for_50).lower()}",
         "```",
@@ -515,7 +552,18 @@ def run(args: argparse.Namespace) -> None:
 
     determinism_records: list[dict[str, object]] = []
     success_case = next((case for case in all_cases if case["stable_success"]), None)
-    failure_case = failures[0] if failures else None
+    reproduced_failure_ids = {
+        str(record["layout_id"])
+        for record in replay_records
+        if record["reproduced"]
+    }
+    failure_case = next(
+        (
+            case for case in failures
+            if str(case["layout_id"]) in reproduced_failure_ids
+        ),
+        failures[0] if failures else None,
+    )
     for baseline_kind, case in (("success", success_case), ("failure", failure_case)):
         if case is None:
             continue
@@ -575,8 +623,19 @@ def run(args: argparse.Namespace) -> None:
     all_reproduced = all(bool(record["reproduced"]) for record in replay_records)
     deterministic = all(bool(record["consistent"]) for record in determinism_records)
     videos_valid = all(bool(record["video"]["valid"]) for record in replay_records)
+    no_infrastructure_failures = not any(
+        case["first_failure_skill"] in {"VISION", "RUNTIME_ERROR"}
+        for case in all_cases
+    )
     infrastructure_pass = all(
-        (len(all_cases) == count, all_strict, all_vision, all_pure, no_forbidden)
+        (
+            len(all_cases) == count,
+            all_strict,
+            all_vision,
+            all_pure,
+            no_forbidden,
+            no_infrastructure_failures,
+        )
     )
     ready_for_50 = all(
         (
@@ -588,6 +647,13 @@ def run(args: argparse.Namespace) -> None:
         )
     )
     aggregate["replays"] = replay_records
+    aggregate["replay_resolved_stable_success_count"] = (
+        int(aggregate["stable_success_count"])
+        + sum(record["single_result"] == "PASS" for record in replay_records)
+    )
+    aggregate["replay_resolved_vision_failure_count"] = sum(
+        record["single_first_failure"] == "VISION" for record in replay_records
+    )
     aggregate["determinism"] = determinism_records
     aggregate["evaluation_infrastructure_pass"] = infrastructure_pass
     aggregate["ready_for_phase4_50"] = ready_for_50
