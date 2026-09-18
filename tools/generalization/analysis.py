@@ -19,7 +19,23 @@ SKILLS = (
     "RELEASE_STABILIZE",
     "RETREAT",
 )
-FIRST_FAILURE_KEYS = (*SKILLS, "VISION", "FINAL_STABILITY", "RUNTIME_ERROR", "UNKNOWN")
+FIRST_FAILURE_KEYS = (
+    *SKILLS,
+    "VISION",
+    "FINAL_STABILITY",
+    "RUNTIME_ERROR",
+    "GLOBAL_RUNTIME_ERROR",
+    "UNKNOWN",
+)
+OUTCOME_TYPES = (
+    "PASS",
+    "VISION_FAILURE",
+    "SKILL_FAILURE",
+    "FINAL_STABILITY",
+    "TIMEOUT",
+    "RUNTIME_ERROR",
+    "GLOBAL_RUNTIME_ERROR",
+)
 FAILURE_TYPES = (
     "VISION_FAILURE",
     "REACH_GEOMETRY",
@@ -36,6 +52,7 @@ FAILURE_TYPES = (
     "FINAL_STACK_UNSTABLE",
     "TIMEOUT",
     "RUNTIME_ERROR",
+    "GLOBAL_RUNTIME_ERROR",
     "UNKNOWN",
 )
 
@@ -86,6 +103,8 @@ def _failure_type(
         return "VISION_FAILURE"
     if first_failure == "RUNTIME_ERROR":
         return "RUNTIME_ERROR"
+    if first_failure == "GLOBAL_RUNTIME_ERROR":
+        return "GLOBAL_RUNTIME_ERROR"
     if first_failure == "FINAL_STABILITY":
         return "FINAL_STACK_UNSTABLE"
     if first_failure == "REACH":
@@ -149,6 +168,11 @@ def extract_batch_cases(
     support_asset = str(manifest["support_asset"])
     failure = result.get("failure", {})
     failure_stage = failure.get("stage") if isinstance(failure, Mapping) else None
+    global_runtime_error = bool(
+        result.get("failure_taxonomy") == "GLOBAL_RUNTIME_ERROR"
+        or isinstance(failure, Mapping)
+        and failure.get("taxonomy") == "GLOBAL_RUNTIME_ERROR"
+    )
     failed_vision_envs = {
         int(value) for value in failure.get("failed_environments", ())
     } if failure_stage == "VISION" else set()
@@ -171,6 +195,12 @@ def extract_batch_cases(
     seed_valid = seed_valid if isinstance(seed_valid, Sequence) else ()
     service_calls = int(vision.get("v7_service_calls", 0))
     per_env_vision_calls = service_calls // len(layout_ids) if layout_ids else 0
+    environment_outcomes = result.get("environment_outcomes", ())
+    outcomes_by_env = {
+        int(row["environment_index"]): row
+        for row in environment_outcomes
+        if isinstance(row, Mapping) and "environment_index" in row
+    } if isinstance(environment_outcomes, Sequence) else {}
     stage_rows = {
         skill: _row_map(relation, skill) if relation is not None else {}
         for skill in SKILLS[1:]
@@ -179,11 +209,28 @@ def extract_batch_cases(
     for env_index, layout_id in enumerate(layout_ids):
         object_xyz = list(positions[object_asset][env_index])
         support_xyz = list(positions[support_asset][env_index])
-        runtime_error = relation is None and env_index not in failed_vision_envs
-        vision_valid = env_index not in failed_vision_envs and (
-            bool(seed_valid[env_index])
-            if env_index < len(seed_valid)
-            else failure_stage != "VISION"
+        environment_outcome = outcomes_by_env.get(env_index)
+        outcome_name = (
+            str(environment_outcome.get("outcome"))
+            if environment_outcome is not None else None
+        )
+        vision_failed = (
+            outcome_name == "VISION_FAILURE" or env_index in failed_vision_envs
+        )
+        runtime_error = (
+            outcome_name in {"RUNTIME_ERROR", "GLOBAL_RUNTIME_ERROR"}
+            if environment_outcome is not None
+            else relation is None and not vision_failed
+        )
+        vision_valid = (
+            bool(environment_outcome.get("vision_valid"))
+            if environment_outcome is not None
+            and environment_outcome.get("vision_valid") is not None
+            else not vision_failed and (
+                bool(seed_valid[env_index])
+                if env_index < len(seed_valid)
+                else failure_stage != "VISION"
+            )
         )
         skill_state: dict[str, dict[str, object]] = {}
         reach_success = env_index in stage_rows["GRASP"]
@@ -200,7 +247,9 @@ def extract_batch_cases(
             else 0
         )
         skill_state["REACH"] = {
-            "entered": relation is not None and vision_valid,
+            "entered": relation is not None and (
+                vision_valid or reach_success or reach_step_count > 0
+            ),
             "success": bool(reach_success),
             "steps": reach_step_count,
             "telemetry": None,
@@ -213,16 +262,28 @@ def extract_batch_cases(
                 "steps": int(row.get("steps", 0)) if row else 0,
                 "telemetry": row,
             }
-        physical_success = bool(
-            env_index < len(seed_success) and seed_success[env_index]
+        physical_success = (
+            bool(environment_outcome.get("physical_success"))
+            if environment_outcome is not None
+            else bool(env_index < len(seed_success) and seed_success[env_index])
         )
-        stable_success = physical_success
+        stable_success = (
+            bool(environment_outcome.get("stable_success"))
+            if environment_outcome is not None else physical_success
+        )
         first_failure: str | None = None
         failed_row: Mapping[str, object] | None = None
-        if env_index in failed_vision_envs:
+        if environment_outcome is not None:
+            value = environment_outcome.get("first_failure_skill")
+            first_failure = str(value) if value is not None else None
+            if first_failure in stage_rows:
+                failed_row = stage_rows[first_failure].get(env_index)
+        elif vision_failed:
             first_failure = "VISION"
         elif runtime_error:
-            first_failure = "RUNTIME_ERROR"
+            first_failure = (
+                "GLOBAL_RUNTIME_ERROR" if global_runtime_error else "RUNTIME_ERROR"
+            )
         else:
             for skill in SKILLS:
                 state = skill_state[skill]
@@ -235,6 +296,27 @@ def extract_batch_cases(
                 first_failure = "FINAL_STABILITY" if all(
                     bool(skill_state[skill]["success"]) for skill in SKILLS
                 ) else "UNKNOWN"
+        failure_type = _failure_type(first_failure, failed_row, thresholds)
+        if outcome_name is None:
+            if stable_success:
+                outcome_name = "PASS"
+            elif first_failure == "VISION":
+                outcome_name = "VISION_FAILURE"
+            elif first_failure == "GLOBAL_RUNTIME_ERROR":
+                outcome_name = "GLOBAL_RUNTIME_ERROR"
+            elif first_failure == "RUNTIME_ERROR":
+                outcome_name = "RUNTIME_ERROR"
+            elif first_failure == "FINAL_STABILITY":
+                outcome_name = "FINAL_STABILITY"
+            elif failure_type == "TIMEOUT":
+                outcome_name = "TIMEOUT"
+            else:
+                outcome_name = "SKILL_FAILURE"
+        peer_aborted = (
+            bool(environment_outcome.get("peer_aborted_due_to_other_env_failure"))
+            if environment_outcome is not None
+            else bool(runtime_error and failure_stage == "VISION")
+        )
         case = {
             "layout_id": layout_id,
             "batch_env_index": env_index,
@@ -245,14 +327,25 @@ def extract_batch_cases(
             "geometry": _geometry(object_xyz, support_xyz),
             "physical_success": physical_success,
             "stable_success": stable_success,
-            "v7_chain_verified": v7_chain.get("verified") is True,
+            "v7_chain_verified": (
+                environment_outcome.get("v7_chain_verified") is True
+                if environment_outcome is not None
+                else v7_chain.get("verified") is True
+            ),
             "runtime_purity_verified": runtime_purity.get("verified") is True,
             "vendor_path_exposed": runtime_purity.get("vendor_path_exposed"),
             "loaded_v5_module_count": runtime_purity.get("loaded_v5_module_count"),
             "strict_vision": vision.get("strict_mode") is True,
             "vision_valid": vision_valid,
-            "vision_service_calls": per_env_vision_calls,
-            "invalid_vision_frames": int(vision.get("invalid_frames", 0)),
+            "vision_service_calls": (
+                int(environment_outcome.get("vision_service_calls", 0))
+                if environment_outcome is not None else per_env_vision_calls
+            ),
+            "invalid_vision_frames": (
+                int(environment_outcome.get("vision_invalid_frames", 0))
+                if environment_outcome is not None
+                else int(vision.get("invalid_frames", 0))
+            ),
             "oracle_fallback_count": int(vision.get("oracle_fallback_count", 0)),
             "reference_skill_calls": int(
                 closeout.get(
@@ -272,10 +365,14 @@ def extract_batch_cases(
                 ),
             },
             "first_failure_skill": first_failure,
-            "failure_type": _failure_type(first_failure, failed_row, thresholds),
+            "failure_type": failure_type,
+            "outcome": outcome_name,
+            "peer_aborted_due_to_other_env_failure": peer_aborted,
             "failure_reason": (
-                "batch_aborted_by_peer_strict_vision_failure"
-                if runtime_error and failure_stage == "VISION"
+                environment_outcome.get("failure_reason")
+                if environment_outcome is not None
+                else "batch_aborted_by_peer_strict_vision_failure"
+                if peer_aborted
                 else (
                     str(failure.get("message", "runtime exception aborted evaluation"))
                     if runtime_error and isinstance(failure, Mapping)
@@ -356,10 +453,11 @@ def aggregate_cases(cases: Sequence[Mapping[str, object]]) -> dict[str, object]:
         for case in cases
         if case.get("failure_type") is not None
     )
+    outcomes = Counter(str(case["outcome"]) for case in cases)
     physical_ci = wilson_interval(physical, total)
     stable_ci = wilson_interval(stable, total)
     return {
-        "schema": "stage_vla_v7.phase4_pilot_aggregate.v1",
+        "schema": "stage_vla_v7.phase4_pilot_aggregate.v2",
         "layout_count": total,
         "evaluated_cases": total,
         "physical_success_count": physical,
@@ -381,6 +479,13 @@ def aggregate_cases(cases: Sequence[Mapping[str, object]]) -> dict[str, object]:
             int(case["reference_skill_calls"]) for case in cases
         ),
         "recovery_calls": max(int(case["recovery_calls"]) for case in cases),
+        "peer_aborted_due_to_other_env_failure": sum(
+            bool(case["peer_aborted_due_to_other_env_failure"])
+            for case in cases
+        ),
+        "outcome_taxonomy": {
+            key: outcomes.get(key, 0) for key in OUTCOME_TYPES
+        },
         "skill_funnel": skill_funnel,
         "first_failure_distribution": {
             key: first_failure.get(key, 0) for key in FIRST_FAILURE_KEYS
@@ -403,6 +508,7 @@ def write_json(path: Path, payload: Mapping[str, object] | Sequence[object]) -> 
 __all__ = [
     "FAILURE_TYPES",
     "FIRST_FAILURE_KEYS",
+    "OUTCOME_TYPES",
     "SKILLS",
     "aggregate_cases",
     "extract_batch_cases",

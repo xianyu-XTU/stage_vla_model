@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
+from .isolation import VisionIsolation
 from .trace import PhysicalTraceCollector
 
 
@@ -97,7 +98,9 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
     pressure_tracking_ok = context.helpers.pressure_tracking_ok
     hold_finished_skill_action = context.helpers.hold_finished_skill_action
     trace_collector = PhysicalTraceCollector(args, env, context.helpers)
-
+    isolation = VisionIsolation(
+        bool(args.use_vision), args.num_envs, vision_seed_valid, reach_raw_action
+    )
     def scene_fingerprint():
         tensors = []
         for name in scene_assets:
@@ -107,7 +110,6 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
         tensors.append(torch.as_tensor(env.robot.data.joint_pos).clone())
         tensors.append(torch.as_tensor(env.robot.data.joint_vel).clone())
         return tuple(tensors)
-
     def run_reach(
         object_asset: str,
         support_asset: str,
@@ -134,13 +136,8 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
         )
         active_mask = torch.as_tensor(
             active_mask, dtype=torch.bool, device=reach_state["ee"].device
-        )
-        if args.use_vision:
-            active_mask &= torch.as_tensor(
-                vision_seed_valid,
-                dtype=torch.bool,
-                device=reach_state["ee"].device,
-            )
+        ).clone()
+        active_mask &= isolation.mask(reach_state["ee"].device)
         reached = ~active_mask.clone()
         reach_stable = torch.zeros(
             args.num_envs, dtype=torch.long, device=reach_state["ee"].device
@@ -193,7 +190,8 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                     "REACH",
                     reach_obs,
                     reference_state=reach_state,
-                    finished=reached,
+                    finished=reached | ~active_mask,
+                    inference_mask=active_mask,
                     translation_limit_m=0.005,
                     yaw_limit_rad=0.02,
                     include_reference=label_reach,
@@ -211,7 +209,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                 action, _aligning, _yaw_error = project_reach_safety(
                     action, active
                 )
-                raw.step(reach_raw_action(action))
+                raw.step(isolation.reach_raw_action(action, env.status.previous_action))
                 reach_reset |= bool(raw.unwrapped.reset_buf.any())
                 if reach_reset:
                     raise RuntimeError("simulator reset during REACH")
@@ -219,6 +217,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                 reach_state = measure_policy_reach_state(
                     object_asset, support_asset
                 )
+                active_mask &= isolation.mask(reach_state["ee"].device)
                 reach_state["grasp_target"] = grasp_target_position(
                     reach_state["red"], object_size_xyz, profile=grasp_profile
                 )
@@ -245,7 +244,8 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                     "REACH",
                     reach_obs,
                     reference_state=reach_state,
-                    finished=reached,
+                    finished=reached | ~active_mask,
+                    inference_mask=active_mask,
                     translation_limit_m=0.005,
                     yaw_limit_rad=0.02,
                 )
@@ -253,7 +253,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                 action, _aligning, _yaw_error = project_reach_safety(
                     action, output.active
                 )
-                raw.step(reach_raw_action(action))
+                raw.step(isolation.reach_raw_action(action, env.status.previous_action))
                 reach_reset |= bool(raw.unwrapped.reset_buf.any())
                 if reach_reset:
                     raise RuntimeError("simulator reset during REACH recovery")
@@ -261,6 +261,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                 reach_state = measure_policy_reach_state(
                     object_asset, support_asset
                 )
+                active_mask &= isolation.mask(reach_state["ee"].device)
                 reach_state["grasp_target"] = grasp_target_position(
                     reach_state["red"], object_size_xyz, profile=grasp_profile
                 )
@@ -319,6 +320,8 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                     "REACH",
                     reach_obs,
                     reference_state=reach_state,
+                    finished=~active_mask,
+                    inference_mask=active_mask,
                     translation_limit_m=0.005,
                     yaw_limit_rad=0.02,
                 )
@@ -326,15 +329,16 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                 if demonstration_dir is not None and not learned_reach:
                     demonstration_rows.append("REACH", reach_obs, action)
                 action, _aligning, _yaw_error = project_reach_safety(
-                    action, torch.ones_like(reached)
+                    action, output.active
                 )
-                raw.step(reach_raw_action(action))
+                raw.step(isolation.reach_raw_action(action, env.status.previous_action))
                 if raw.unwrapped.reset_buf.any():
                     raise RuntimeError("simulator reset during REACH refinement")
                 capture_video_frame(f"{label} REACH refine", refine_step)
                 reach_state = measure_policy_reach_state(
                     object_asset, support_asset
                 )
+                active_mask &= isolation.mask(reach_state["ee"].device)
                 reach_state["grasp_target"] = grasp_target_position(
                     reach_state["red"], object_size_xyz, profile=grasp_profile
                 )
@@ -365,7 +369,9 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
             contact_action = torch.zeros(
                 args.num_envs, 7, device=reach_state["ee"].device
             )
-            contact_action[:, 2] = -float(args.pregrasp_contact_descent_m) / 0.005
+            contact_action[final_reach_success, 2] = -float(
+                args.pregrasp_contact_descent_m
+            ) / 0.005
             contact_action[:, 6] = 1.0
             raw.step(contact_action)
             if raw.unwrapped.reset_buf.any():
@@ -379,6 +385,8 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
             })
         env.synchronize_after_external_step()
         inject_visual_roles(object_asset, support_asset)
+        active_mask &= isolation.mask(reach_state["ee"].device)
+        final_reach_success &= active_mask
         return env.observe(), {
             "passed": bool(final_reach_success.any()),
             "env_success": final_reach_success.detach().cpu().tolist(),
@@ -398,9 +406,12 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
         object_asset, support_asset = task_pairs[relation_index]
         active_mask = torch.as_tensor(
             active_mask, dtype=torch.bool, device=env.device
-        )
+        ).clone()
         for step in range(1, horizon + 1):
             inject_visual_roles(object_asset, support_asset)
+            active_mask &= isolation.mask(env.device)
+            if not bool(active_mask.any()):
+                break
             obs = env.observe()
             physical_state = env.physical_state
             status = env.status
@@ -413,7 +424,8 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                 skill,
                 obs["policy"],
                 reference_state=reference_state,
-                finished=status.finished,
+                finished=status.finished | ~active_mask,
+                inference_mask=active_mask,
                 translation_limit_m=skill_translation_limits.get(skill, 0.005),
                 yaw_limit_rad=0.02,
                 include_reference=skill in args.dagger_label_skills,
@@ -421,7 +433,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
             action = output.command
             if skill != "REACH":
                 action = hold_finished_skill_action(
-                    skill, action, status.finished, status.previous_action
+                    skill, action, status.finished | ~active_mask, status.previous_action
                 )
             active = output.active
             if output.source == "reference":
@@ -500,11 +512,14 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
             active_mask=active_mask,
         )
 
-    def settle(obs, steps: int, label: str, relation_index: int):
+    def settle(obs, steps: int, label: str, relation_index: int, active_mask):
         if not steps:
             return obs
         action = torch.zeros(args.num_envs, 5, device=env.device)
-        action[:, 4] = -1.0
+        active = torch.as_tensor(active_mask, dtype=torch.bool, device=env.device)
+        active &= isolation.mask(env.device)
+        action[active, 4] = -1.0
+        action[~active, 4] = env.status.previous_action[~active, 4]
         for step in range(1, steps + 1):
             obs, _reward, _done, _extras = env.step(action)
             if bool(env.unwrapped.reset_buf.any()):
@@ -517,7 +532,6 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                 submitted_action=action,
             )
         return obs
-
     relation_results = []
     reset_seen = False
     overall_alive = torch.ones(args.num_envs, dtype=torch.bool, device=env.device)
@@ -597,6 +611,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                     obs, skill, horizon, relation_index, active_mask
                 )
                 reset_seen |= bool(env.unwrapped.reset_buf.any())
+                active_mask &= isolation.mask(env.device)
                 successes[skill] = sum(
                     row["success"] for row in stage_rows[skill].values()
                 )
@@ -622,6 +637,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                         settle_steps,
                         f"{relation_label} {skill} handoff",
                         relation_index,
+                        active_mask,
                     )
                     conditioners.append({
                         "from": skill, "steps": settle_steps,
@@ -666,7 +682,6 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
             overall_alive = active_mask
             if not bool(overall_alive.any()):
                 break
-
     return TaskExecutionResult(
         relation_results=relation_results,
         reset_seen=reset_seen,

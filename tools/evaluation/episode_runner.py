@@ -15,11 +15,13 @@ from .cli import EvaluationPlan
 from .constants import ASSET_TO_VISION_LABEL, EXTRA_CUBE_COLORS
 from .data_collection import SkillDemonstrationBuffer, write_data_manifests
 from .debug_oracle import read_debug_oracle_local_positions
+from .outcomes import build_global_error_outcomes
 from .provenance import capture_source_snapshot, collect_evidence_provenance
 from .result_writer import ResultContext, build_evaluation_result, write_json_result
 from .runtime_purity import audit_runtime_purity, install_v5_import_blocker
 from .task_evaluator import evaluate_task
 from .task_executor import ExecutionHelpers, TaskExecutionContext, execute_task
+from .vision_runtime import VisionBatchObserver
 from .vision_policy import VisionDetectionError, VisionFailPolicy, VisionPositionResolver
 from stage_vla_v7.action import ActionOutputModule
 from stage_vla_v7.action import (
@@ -87,9 +89,15 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
     try:
         install_v5_import_blocker()
     except RuntimeError as exc:
+        failure = {
+            "type": type(exc).__name__,
+            "message": str(exc),
+        }
         write_json_result(out, {
             "status": "failed",
-            "failure": {"type": type(exc).__name__, "message": str(exc)},
+            "failure": failure,
+            "failure_scope": "global",
+            "failure_taxonomy": "GLOBAL_RUNTIME_ERROR",
             "v7_chain": {"verified": False, "required": bool(args.require_v7_chain)},
             "runtime_purity": audit_runtime_purity().as_dict(),
             "provenance": collect_evidence_provenance(
@@ -97,6 +105,10 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
                 repository_root=V7_ROOT,
                 source_snapshot=source_snapshot,
             ),
+            "environment_outcomes": build_global_error_outcomes(
+                int(getattr(args, "num_envs", 1)), failure
+            ),
+            "peer_aborted_due_to_other_env_failure": 0,
         })
         raise
 
@@ -242,6 +254,7 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             "enabled": bool(args.use_vision),
             "frames": 0,
             "v7_service_calls": 0,
+            "v7_service_calls_by_environment": [0] * args.num_envs,
             "fail_policy": args.vision_fail_policy,
             "strict_mode": bool(
                 args.use_vision and args.vision_fail_policy == VisionFailPolicy.STRICT.value
@@ -262,6 +275,7 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
         vision_origins = None
         vision_seed_valid = np.ones(args.num_envs, dtype=bool)
         vision_position_resolver = None
+        vision_batch_observer = None
         if args.use_vision:
             vision_position_resolver = VisionPositionResolver(
                 VisionFailPolicy(args.vision_fail_policy),
@@ -321,6 +335,28 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
                 raw.step(warmup_action)
                 if bool(raw.unwrapped.reset_buf.any()):
                     raise RuntimeError("simulator reset during RGB-D warmup")
+            oracle_loader = None
+            if args.vision_fail_policy == VisionFailPolicy.DEBUG_ORACLE.value:
+                oracle_loader = lambda asset_name: read_debug_oracle_local_positions(
+                    raw,
+                    vision_origins,
+                    asset_name,
+                    to_torch=to_torch,
+                )
+            vision_batch_observer = VisionBatchObserver(
+                camera=vision_camera,
+                camera_adapter=camera_adapter,
+                service=vision_service,
+                resolver=vision_position_resolver,
+                origins=vision_origins,
+                scene_assets=scene_assets,
+                labels=ASSET_TO_VISION_LABEL,
+                camera_name=VISION_CAMERA_NAME,
+                device=env.device,
+                stats=vision_stats,
+                alive=vision_seed_valid,
+                debug_oracle_loader=oracle_loader,
+            )
         else:
             origins = to_torch(raw.unwrapped.scene.env_origins)[:, :3]
             detections = []
@@ -338,63 +374,8 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             """Read all cube positions from RGB-D, or return an empty mapping."""
             if not args.use_vision:
                 return {}, np.ones(args.num_envs, dtype=bool)
-            assert vision_camera is not None
-            assert vision_detector is not None
-            assert vision_calibration is not None
-            assert vision_service is not None
-            assert vision_origins is not None
-            rgb = camera_adapter.rgb_u8_batch(
-                vision_camera, camera_name=VISION_CAMERA_NAME
-            )
-            depth = camera_adapter.depth_m_batch(
-                vision_camera, camera_name=VISION_CAMERA_NAME
-            )
-            predicted = {
-                name: np.full((args.num_envs, 3), np.nan, dtype=np.float32)
-                for name in scene_assets
-            }
-            for env_index in range(args.num_envs):
-                observed = vision_service.observe(
-                    VisionRequest(
-                        rgb=rgb[env_index],
-                        depth_m=depth[env_index],
-                        frame_id=f"isaac-env-{env_index}",
-                        metadata={"environment_index": env_index},
-                    )
-                )
-                vision_stats["v7_service_calls"] += 1
-                by_label = {item.label: item for item in observed.scene.detections}
-                for asset_name in scene_assets:
-                    detection = by_label.get(ASSET_TO_VISION_LABEL[asset_name])
-                    if detection is not None:
-                        predicted[asset_name][env_index] = np.asarray(
-                            detection.position_xyz_m, dtype=np.float32
-                        )
-            vision_stats["frames"] += int(args.num_envs)
-            assert vision_position_resolver is not None
-            oracle_loader = None
-            if args.vision_fail_policy == VisionFailPolicy.DEBUG_ORACLE.value:
-                oracle_loader = lambda asset_name: read_debug_oracle_local_positions(
-                    raw,
-                    vision_origins,
-                    asset_name,
-                    to_torch=to_torch,
-                )
-            try:
-                resolved, valid = vision_position_resolver.resolve(
-                    predicted,
-                    oracle_loader=oracle_loader,
-                )
-            finally:
-                vision_stats.update(vision_position_resolver.audit())
-            result = {}
-            for asset_name, local_xyz in resolved.items():
-                result[asset_name] = (
-                    torch.as_tensor(local_xyz, device=env.device, dtype=torch.float32)
-                    + vision_origins
-                )
-            vision_seed_valid[:] &= valid
-            return result, valid
+            assert vision_batch_observer is not None
+            return vision_batch_observer.observe_positions()
 
         def inject_visual_roles(object_asset: str, support_asset: str):
             if not args.use_vision:
@@ -634,12 +615,15 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
         )
     except Exception as exc:
         runtime_purity = audit_runtime_purity().as_dict()
+        failure = (
+            exc.as_dict() if isinstance(exc, VisionDetectionError)
+            else {"type": type(exc).__name__, "message": str(exc)}
+        )
         failure_result = {
             "status": "failed",
-            "failure": (
-                exc.as_dict() if isinstance(exc, VisionDetectionError)
-                else {"type": type(exc).__name__, "message": str(exc)}
-            ),
+            "failure": failure,
+            "failure_scope": "global",
+            "failure_taxonomy": "GLOBAL_RUNTIME_ERROR",
             "v7_chain": {
                 "verified": False,
                 "required": bool(args.require_v7_chain),
@@ -657,6 +641,10 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             "recovery_calls": int(
                 getattr(reach_recovery_module, "reference_call_count", 0)
             ),
+            "environment_outcomes": build_global_error_outcomes(
+                int(getattr(args, "num_envs", 1)), failure
+            ),
+            "peer_aborted_due_to_other_env_failure": 0,
         }
         if vision_stats is not None:
             failure_result["vision"] = {

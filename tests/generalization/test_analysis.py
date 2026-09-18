@@ -4,6 +4,7 @@ import pytest
 
 from tools.generalization.analysis import aggregate_cases, extract_batch_cases, wilson_interval
 from tools.generalization.manifest import generate_layout_manifest
+from tools.generalization.run_pilot import _render_v2_report
 
 
 def _successful_row(env: int, *, success: bool = True) -> dict[str, object]:
@@ -115,3 +116,76 @@ def test_strict_vision_exception_overrides_stale_seed_valid() -> None:
     assert cases[0]["first_failure_skill"] == "RUNTIME_ERROR"
     assert cases[1]["vision_valid"] is False
     assert cases[1]["first_failure_skill"] == "VISION"
+
+
+def test_per_environment_outcomes_prevent_peer_abort_classification() -> None:
+    manifest = generate_layout_manifest(seed=29, layout_count=2)
+    result = _batch_result()
+    result["environment_outcomes"] = [
+        {
+            "environment_index": 0,
+            "outcome": "PASS",
+            "physical_success": True,
+            "stable_success": True,
+            "first_failure_skill": None,
+            "vision_valid": True,
+            "vision_invalid_frames": 0,
+            "vision_service_calls": 10,
+            "v7_chain_verified": True,
+            "peer_aborted_due_to_other_env_failure": False,
+        },
+        {
+            "environment_index": 1,
+            "outcome": "VISION_FAILURE",
+            "physical_success": False,
+            "stable_success": False,
+            "first_failure_skill": "VISION",
+            "failure_reason": "invalid_required_detection",
+            "vision_valid": False,
+            "vision_invalid_frames": 1,
+            "vision_service_calls": 1,
+            "v7_chain_verified": False,
+            "peer_aborted_due_to_other_env_failure": False,
+        },
+    ]
+
+    cases = extract_batch_cases(result, manifest, result_path="isolated.json")
+    assert cases[0]["outcome"] == "PASS"
+    assert cases[1]["outcome"] == "VISION_FAILURE"
+    assert cases[1]["first_failure_skill"] == "VISION"
+    assert cases[1]["failure_reason"] == "invalid_required_detection"
+    assert not any(
+        case["peer_aborted_due_to_other_env_failure"] for case in cases
+    )
+
+    aggregate = aggregate_cases(cases)
+    assert aggregate["peer_aborted_due_to_other_env_failure"] == 0
+    assert aggregate["outcome_taxonomy"]["VISION_FAILURE"] == 1
+    assert aggregate["outcome_taxonomy"]["RUNTIME_ERROR"] == 0
+    assert aggregate["outcome_taxonomy"]["GLOBAL_RUNTIME_ERROR"] == 0
+
+
+def test_v2_report_contains_isolation_and_v1_comparison(tmp_path) -> None:
+    manifest = generate_layout_manifest(seed=31, layout_count=2)
+    cases = extract_batch_cases(_batch_result(), manifest, result_path="batch.json")
+    aggregate = aggregate_cases(cases)
+    aggregate["replays"] = []
+    report = _render_v2_report(
+        aggregate=aggregate,
+        manifest_path=tmp_path / "manifest.json",
+        manifest=manifest,
+        batch_size=4,
+        replays=(),
+        source_commit="abc123",
+        source_clean_before_run=True,
+        checkpoint_hashes={"REACH": {"sha256": "ABC"}},
+        v1_aggregate=aggregate,
+        infrastructure_pass=True,
+        ready_for_50=False,
+    )
+
+    assert "Pilot V2" in report
+    assert "## V1 vs V2" in report
+    assert "Peer-aborted cases" in report
+    assert "GLOBAL_RUNTIME_ERROR" in report
+    assert "READY_FOR_PHASE4_50               false" in report

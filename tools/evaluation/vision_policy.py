@@ -47,6 +47,16 @@ class VisionDetectionError(RuntimeError):
         }
 
 
+@dataclass(frozen=True)
+class VisionBatchResult:
+    """Finite batch positions plus a monotonic strict-Vision lifecycle mask."""
+
+    positions: Mapping[str, np.ndarray]
+    valid_mask: np.ndarray
+    alive_mask: np.ndarray
+    newly_failed_mask: np.ndarray
+
+
 @dataclass
 class VisionPositionResolver:
     """Resolve detector positions without hiding missing RGB-D observations."""
@@ -63,6 +73,11 @@ class VisionPositionResolver:
     oracle_fallback_objects: set[str] = field(default_factory=set)
     oracle_fallback_steps: set[int] = field(default_factory=set)
     oracle_fallback_events: list[dict[str, object]] = field(default_factory=list)
+    alive_mask: np.ndarray = field(init=False)
+    invalid_by_environment: np.ndarray = field(init=False)
+    first_invalid_observation: list[int | None] = field(init=False)
+    failed_objects_by_environment: list[set[str]] = field(init=False)
+    failure_reason_by_environment: list[str | None] = field(init=False)
 
     def __post_init__(self) -> None:
         self.asset_names = tuple(self.asset_names)
@@ -72,6 +87,97 @@ class VisionPositionResolver:
         if not self.asset_names or len(set(self.asset_names)) != len(self.asset_names):
             raise ValueError("asset_names must be non-empty and unique")
         self.missing_by_asset = {name: 0 for name in self.asset_names}
+        self.alive_mask = np.ones(self.num_envs, dtype=bool)
+        self.invalid_by_environment = np.zeros(self.num_envs, dtype=np.int64)
+        self.first_invalid_observation = [None] * self.num_envs
+        self.failed_objects_by_environment = [set() for _ in range(self.num_envs)]
+        self.failure_reason_by_environment = [None] * self.num_envs
+
+    def _record_invalid(
+        self,
+        *,
+        observation_index: int,
+        invalid_mask: np.ndarray,
+        observed_by_asset: Mapping[str, np.ndarray],
+    ) -> None:
+        for environment_index in np.flatnonzero(invalid_mask).tolist():
+            self.invalid_by_environment[environment_index] += 1
+            if self.first_invalid_observation[environment_index] is None:
+                self.first_invalid_observation[environment_index] = observation_index
+            self.failure_reason_by_environment[environment_index] = (
+                "invalid_required_detection"
+            )
+            for asset_name, observed in observed_by_asset.items():
+                if not bool(observed[environment_index]):
+                    self.failed_objects_by_environment[environment_index].add(asset_name)
+
+    def resolve_isolated(
+        self,
+        predicted: Mapping[str, np.ndarray],
+        *,
+        active_mask: Sequence[bool] | np.ndarray | None = None,
+    ) -> VisionBatchResult:
+        """Fail strict Vision per environment without retrying or reading oracle state."""
+        if self.policy is not VisionFailPolicy.STRICT:
+            raise ValueError("per-environment isolation is only valid for strict Vision")
+        observation_index = self.observation_count
+        self.observation_count += 1
+        requested = self.alive_mask.copy()
+        if active_mask is not None:
+            supplied = np.asarray(active_mask, dtype=bool)
+            if supplied.shape != (self.num_envs,):
+                raise ValueError(
+                    f"active_mask must have shape ({self.num_envs},)"
+                )
+            requested &= supplied
+
+        arrays: dict[str, np.ndarray] = {}
+        observed_by_asset: dict[str, np.ndarray] = {}
+        current_valid = requested.copy()
+        for asset_name in self.asset_names:
+            if asset_name not in predicted:
+                raise ValueError(f"missing predicted asset {asset_name!r}")
+            values = np.asarray(predicted[asset_name], dtype=np.float32)
+            if values.shape != (self.num_envs, 3):
+                raise ValueError(
+                    f"predicted {asset_name!r} must have shape ({self.num_envs}, 3)"
+                )
+            arrays[asset_name] = values.copy()
+            observed = np.isfinite(values).all(axis=1)
+            observed_by_asset[asset_name] = observed
+            missing = requested & ~observed
+            missing_count = int(missing.sum())
+            self.missing_by_asset[asset_name] += missing_count
+            if missing_count:
+                self.failed_objects.add(asset_name)
+            current_valid &= observed
+
+        invalid = requested & ~current_valid
+        self.invalid_frames += int(invalid.sum())
+        self._record_invalid(
+            observation_index=observation_index,
+            invalid_mask=invalid,
+            observed_by_asset=observed_by_asset,
+        )
+        newly_failed = self.alive_mask & invalid
+        self.alive_mask[newly_failed] = False
+
+        # Dead rows stay finite only to preserve vectorized tensor shapes. The
+        # evaluator masks them out of inference and submits a safe hold action.
+        positions: dict[str, np.ndarray] = {}
+        for asset_name, values in arrays.items():
+            finite = np.zeros_like(values)
+            finite[self.alive_mask] = values[self.alive_mask]
+            positions[asset_name] = finite
+            tracked = np.full_like(values, np.nan)
+            tracked[self.alive_mask] = values[self.alive_mask]
+            self.tracked[asset_name] = tracked
+        return VisionBatchResult(
+            positions=positions,
+            valid_mask=current_valid.copy(),
+            alive_mask=self.alive_mask.copy(),
+            newly_failed_mask=newly_failed.copy(),
+        )
 
     def resolve(
         self,
@@ -104,6 +210,11 @@ class VisionPositionResolver:
             current_valid &= observed
 
         self.invalid_frames += int((~current_valid).sum())
+        self._record_invalid(
+            observation_index=observation_index,
+            invalid_mask=~current_valid,
+            observed_by_asset=observed_by_asset,
+        )
         if self.policy is VisionFailPolicy.STRICT and not bool(current_valid.all()):
             failed_assets = [
                 name for name, observed in observed_by_asset.items()
@@ -188,10 +299,26 @@ class VisionPositionResolver:
             "oracle_fallback_objects": sorted(self.oracle_fallback_objects),
             "oracle_fallback_steps": sorted(self.oracle_fallback_steps),
             "oracle_fallback_events": list(self.oracle_fallback_events),
+            "alive_mask": self.alive_mask.tolist(),
+            "per_environment": [
+                {
+                    "environment_index": index,
+                    "valid": bool(self.alive_mask[index]),
+                    "invalid_frames": int(self.invalid_by_environment[index]),
+                    "first_invalid_observation": self.first_invalid_observation[index],
+                    "first_invalid_step": self.first_invalid_observation[index],
+                    "failed_objects": sorted(
+                        self.failed_objects_by_environment[index]
+                    ),
+                    "failure_reason": self.failure_reason_by_environment[index],
+                }
+                for index in range(self.num_envs)
+            ],
         }
 
 
 __all__ = [
+    "VisionBatchResult",
     "VisionDetectionError",
     "VisionFailPolicy",
     "VisionPositionResolver",

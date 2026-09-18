@@ -51,6 +51,7 @@ class ActionOutputModule:
         *,
         reference_state: Mapping[str, object] | None = None,
         finished: object | None = None,
+        inference_mask: object | None = None,
         translation_limit_m: float = 0.005,
         yaw_limit_rad: float = 0.02,
         include_reference: bool = False,
@@ -74,35 +75,77 @@ class ActionOutputModule:
                 raise ValueError(
                     f"finished must be a bool tensor with shape ({obs.shape[0]},)"
                 )
+        isolate_inference = inference_mask is not None
+        if not isolate_inference:
+            inference = torch.ones(obs.shape[0], dtype=torch.bool, device=obs.device)
+        else:
+            inference = torch.as_tensor(inference_mask, device=obs.device)
+            if inference.dtype != torch.bool or inference.shape != (obs.shape[0],):
+                raise ValueError(
+                    f"inference_mask must be a bool tensor with shape ({obs.shape[0]},)"
+                )
+        active = inference & ~finished_mask
+        inference_rows = active if isolate_inference else inference
 
         use_reference = canonical in self.reference_skills
         teacher = None
-        if use_reference or include_reference:
+        selected_teacher = None
+        if (use_reference or include_reference) and bool(inference_rows.any()):
             if reference_state is None:
                 raise ValueError(f"reference_state is required for {canonical.value}")
-            teacher = reference_action(
+            selected_state = {
+                name: self._select_batch_rows(value, inference_rows, obs.shape[0])
+                for name, value in reference_state.items()
+            }
+            selected_teacher = reference_action(
                 canonical,
-                reference_state,
+                selected_state,
                 translation_limit_m=translation_limit_m,
                 yaw_limit_rad=yaw_limit_rad,
             ).to(device=obs.device, dtype=torch.float32)
-            self._validate_action(canonical, teacher, obs.shape[0], "reference")
+            self._validate_action(
+                canonical, selected_teacher, int(inference_rows.sum()), "reference"
+            )
+            teacher = torch.zeros(
+                (obs.shape[0], len(ACTION_ORDER)),
+                dtype=torch.float32,
+                device=obs.device,
+            )
+            teacher[:, 4] = self._finished_grip(canonical)
+            teacher[inference_rows] = selected_teacher
 
         if use_reference:
-            self.reference_call_count += 1
-            candidate = teacher
+            candidate = torch.zeros(
+                (obs.shape[0], len(ACTION_ORDER)),
+                dtype=torch.float32,
+                device=obs.device,
+            )
+            candidate[:, 4] = self._finished_grip(canonical)
+            if bool(inference_rows.any()):
+                self.reference_call_count += 1
+                candidate[inference_rows] = selected_teacher
             source = "reference"
         else:
             if self.policy_source is None:
                 raise RuntimeError(
                     f"no policy action source configured for {canonical.value}"
                 )
-            candidate = torch.as_tensor(
-                self.policy_source.action(canonical, obs),
-                device=obs.device,
+            candidate = torch.zeros(
+                (obs.shape[0], len(ACTION_ORDER)),
                 dtype=torch.float32,
+                device=obs.device,
             )
-            self._validate_action(canonical, candidate, obs.shape[0], "policy")
+            candidate[:, 4] = self._finished_grip(canonical)
+            if bool(inference_rows.any()):
+                selected = torch.as_tensor(
+                    self.policy_source.action(canonical, obs[inference_rows]),
+                    device=obs.device,
+                    dtype=torch.float32,
+                )
+                self._validate_action(
+                    canonical, selected, int(inference_rows.sum()), "policy"
+                )
+                candidate[inference_rows] = selected
             source = "policy"
 
         candidate = candidate.clone()
@@ -113,10 +156,17 @@ class ActionOutputModule:
             skill=canonical,
             command=command,
             candidate=candidate,
-            active=~finished_mask,
+            active=active,
             source=source,
             reference=None if teacher is None else teacher.clone(),
         )
+
+    @staticmethod
+    def _select_batch_rows(value: object, mask: object, batch: int) -> object:
+        shape = getattr(value, "shape", None)
+        if shape is not None and len(shape) > 0 and int(shape[0]) == batch:
+            return value[mask]
+        return value
 
     @staticmethod
     def _validate_action(skill: Skill, action: Any, batch: int, label: str) -> None:

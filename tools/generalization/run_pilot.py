@@ -131,6 +131,8 @@ def _run_evaluator(
         "failure": {
             "type": "EvaluatorProcessError",
             "message": f"evaluator exited {completed.returncode} without a result",
+            "scope": "global",
+            "taxonomy": "GLOBAL_RUNTIME_ERROR",
         },
         "v7_chain": {"verified": False, "required": True},
         "runtime_purity": {"verified": False},
@@ -443,6 +445,121 @@ def _render_report(
     return "\n".join(lines)
 
 
+def _render_v2_report(
+    *,
+    aggregate: Mapping[str, object],
+    manifest_path: Path,
+    manifest: Mapping[str, object],
+    batch_size: int,
+    replays: Sequence[Mapping[str, object]],
+    source_commit: str,
+    source_clean_before_run: bool,
+    checkpoint_hashes: object,
+    v1_aggregate: Mapping[str, object] | None,
+    infrastructure_pass: bool,
+    ready_for_50: bool,
+) -> str:
+    funnel = aggregate["skill_funnel"]
+    first = aggregate["first_failure_distribution"]
+    outcomes = aggregate["outcome_taxonomy"]
+    cases = aggregate["cases"]
+    failures = [case for case in cases if not case["stable_success"]]
+    matches = sum(bool(row["reproduced"]) for row in replays)
+
+    def rate(value: object) -> str:
+        return "n/a" if value is None else _percentage(float(value))
+
+    checkpoint_summary = ", ".join(
+        f"{skill}={record.get('sha256')}"
+        for skill, record in sorted(checkpoint_hashes.items())
+        if isinstance(record, Mapping)
+    ) if isinstance(checkpoint_hashes, Mapping) else str(checkpoint_hashes)
+
+    lines = [
+        "# Phase 4-A Random Layout Generalization Pilot V2", "",
+        "## Configuration", "",
+        f"- Source commit: `{source_commit}`",
+        f"- Source worktree clean before run: `{str(source_clean_before_run).lower()}`",
+        f"- Layout manifest: `{manifest_path}`",
+        f"- Manifest seed: `{manifest['seed']}`; layouts: `{manifest['layout_count']}`",
+        f"- Batch size: `{batch_size}`",
+        "- Strict RGB-D Vision; zero oracle, reference, recovery, and Vision retries",
+        "- Eight frozen learned checkpoints; unchanged cameras, physics, thresholds, and task", "",
+        f"Checkpoint SHA-256: `{checkpoint_summary}`", "",
+        "## Results", "",
+        "| Metric | V2 |", "|---|---:|",
+        f"| Cases independently accounted | {aggregate['evaluated_cases']} / {aggregate['layout_count']} |",
+        f"| Physical success | {aggregate['physical_success_count']} / {aggregate['layout_count']} |",
+        f"| Stable success | {aggregate['stable_success_count']} / {aggregate['layout_count']} ({_percentage(aggregate['stable_success_rate'])}) |",
+        f"| Stable Wilson 95% CI | [{_percentage(aggregate['stable_success_wilson_95'][0])}, {_percentage(aggregate['stable_success_wilson_95'][1])}] |",
+        f"| Vision-valid cases | {aggregate['vision_valid_count']} / {aggregate['layout_count']} |",
+        f"| Runtime-pure cases | {aggregate['runtime_purity_valid_count']} / {aggregate['layout_count']} |",
+        f"| Peer-aborted cases | {aggregate['peer_aborted_due_to_other_env_failure']} |",
+        f"| VISION_FAILURE | {outcomes['VISION_FAILURE']} |",
+        f"| RUNTIME_ERROR | {outcomes['RUNTIME_ERROR']} |",
+        f"| GLOBAL_RUNTIME_ERROR | {outcomes['GLOBAL_RUNTIME_ERROR']} |", "",
+        "## V1 vs V2", "", "| Metric | V1 | V2 |", "|---|---:|---:|",
+    ]
+    if v1_aggregate is not None:
+        v1_cases = v1_aggregate.get("cases", ())
+        v1_replays = v1_aggregate.get("replays", ())
+        v1_peer = sum(
+            isinstance(row, Mapping)
+            and row.get("failure_reason") == "batch_aborted_by_peer_strict_vision_failure"
+            for row in v1_cases
+        )
+        v1_matches = sum(
+            bool(row.get("reproduced")) for row in v1_replays
+            if isinstance(row, Mapping)
+        )
+        comparison = (
+            ("Stable success", v1_aggregate["stable_success_count"], aggregate["stable_success_count"]),
+            ("Vision failures", v1_aggregate["first_failure_distribution"]["VISION"], first["VISION"]),
+            ("RUNTIME_ERROR", v1_aggregate["first_failure_distribution"]["RUNTIME_ERROR"], first["RUNTIME_ERROR"]),
+            ("Peer aborts", v1_peer, aggregate["peer_aborted_due_to_other_env_failure"]),
+            ("Batch/replay agreement", f"{v1_matches}/{len(v1_replays)}", f"{matches}/{len(replays)}"),
+            ("ALIGN conditional success", rate(v1_aggregate["skill_funnel"]["ALIGN"]["conditional_success_rate"]), rate(funnel["ALIGN"]["conditional_success_rate"])),
+            ("DESCEND conditional success", rate(v1_aggregate["skill_funnel"]["DESCEND"]["conditional_success_rate"]), rate(funnel["DESCEND"]["conditional_success_rate"])),
+        )
+        lines.extend(f"| {name} | {old} | {new} |" for name, old, new in comparison)
+    else:
+        lines.append("| V1 aggregate unavailable | n/a | n/a |")
+    lines.extend(["", "## Skill Funnel", "", "| Skill | Entered | Success | Conditional success |", "|---|---:|---:|---:|"])
+    for skill in SKILLS:
+        row = funnel[skill]
+        lines.append(f"| {skill} | {row['entered']} | {row['success']} | {rate(row['conditional_success_rate'])} |")
+    lines.extend(["", "## Failures", "", "| First failure | Count |", "|---|---:|"])
+    lines.extend(f"| {name} | {count} |" for name, count in first.items())
+    lines.extend(["", "| Outcome | Count |", "|---|---:|"])
+    lines.extend(f"| {name} | {count} |" for name, count in outcomes.items())
+    lines.extend(["", "## Layout Outcomes", "", "| Layout | Result | First failure | Taxonomy |", "|---|---|---|---|"])
+    for case in cases:
+        lines.append(f"| {case['layout_id']} | {'PASS' if case['stable_success'] else 'FAIL'} | {case['first_failure_skill'] or '-'} | {case['outcome']} |")
+    lines.extend(["", "## Replays", "", "| Layout | Batch | Replay | Batch first | Replay first | Match | Video valid |", "|---|---|---|---|---|---|---|"])
+    for row in replays:
+        lines.append(f"| {row['layout_id']} | {row['batch_result']} | {row['single_result']} | {row['batch_first_failure']} | {row['single_first_failure']} | {row['reproduced']} | {row['video']['valid']} |")
+    lines.extend([
+        "", "## Acceptance", "", "```text",
+        f"Source commit                      {source_commit}",
+        f"Source clean before Pilot          {str(source_clean_before_run).lower()}",
+        f"Phase 3 runtime purity             {'PASS' if aggregate['runtime_purity_valid_count'] == aggregate['layout_count'] else 'FAIL'}",
+        f"Strict Vision                      {'PASS' if aggregate['strict_vision_count'] == aggregate['layout_count'] else 'FAIL'}",
+        f"Loaded V5 modules                 {max(int(case['loaded_v5_module_count'] or 0) for case in cases)}",
+        f"Vendor path exposed               {any(case['vendor_path_exposed'] is True for case in cases)}",
+        f"Per-env Vision isolation          {'PASS' if aggregate['peer_aborted_due_to_other_env_failure'] == 0 else 'FAIL'}",
+        f"Peer-abort count                  {aggregate['peer_aborted_due_to_other_env_failure']}",
+        f"Oracle fallback                   {aggregate['oracle_fallback_count']}",
+        f"Reference calls                   {aggregate['reference_skill_calls']}",
+        f"Recovery calls                    {aggregate['recovery_calls']}",
+        f"Evaluated cases                   {aggregate['evaluated_cases']} / {aggregate['layout_count']}",
+        f"Failed cases replayed             {len(replays)} / {len(failures)}",
+        f"Batch/replay matched              {matches} / {len(replays)}",
+        f"Evaluation infrastructure         {'PASS' if infrastructure_pass else 'FAIL'}",
+        f"READY_FOR_PHASE4_50               {str(ready_for_50).lower()}", "```", "",
+    ])
+    return "\n".join(lines)
+
+
 def run(args: argparse.Namespace) -> None:
     master_path = args.manifest.resolve()
     master = load_phase4_manifest(master_path)
@@ -494,6 +611,10 @@ def run(args: argparse.Namespace) -> None:
             "manifest": str(manifest_path),
             "result": str(result_path),
             "status": result.get("status"),
+            "source_commit": result.get("provenance", {}).get("source_commit"),
+            "source_clean_before_run": result.get("provenance", {}).get(
+                "source_worktree_clean_before_run"
+            ),
         })
         print(f"batch {batch_number}: {sum(case['stable_success'] for case in cases)}/{len(cases)}")
 
@@ -502,9 +623,9 @@ def run(args: argparse.Namespace) -> None:
     aggregate["manifest_seed"] = master["seed"]
     aggregate["batch_size"] = args.batch_size
     aggregate["batches"] = batch_records
-    write_json(output_root / "phase4_pilot_aggregate.json", aggregate)
+    write_json(output_root / "phase4_pilot_v2_aggregate.json", aggregate)
     failures = [case for case in all_cases if not case["stable_success"]]
-    write_json(output_root / "phase4_pilot_failures.json", failures)
+    write_json(output_root / "phase4_pilot_v2_failures.json", failures)
 
     index_by_id = {
         str(layout_id): index for index, layout_id in enumerate(master["layout_ids"])
@@ -548,7 +669,7 @@ def run(args: argparse.Namespace) -> None:
             "trace_path": str(trace_path),
         })
         print(f"replay {layout_id}: reproduced={reproduced}")
-    write_json(output_root / "phase4_pilot_replays.json", replay_records)
+    write_json(output_root / "phase4_pilot_v2_replays.json", replay_records)
 
     determinism_records: list[dict[str, object]] = []
     success_case = next((case for case in all_cases if case["stable_success"]), None)
@@ -610,11 +731,14 @@ def run(args: argparse.Namespace) -> None:
             "outcomes": outcomes,
         })
         print(f"determinism {layout_id}: consistent={consistent}")
-    write_json(output_root / "phase4_pilot_determinism.json", determinism_records)
+    write_json(output_root / "phase4_pilot_v2_determinism.json", determinism_records)
 
     all_strict = all(bool(case["strict_vision"]) for case in all_cases)
-    all_vision = int(aggregate["vision_valid_count"]) == count
     all_pure = int(aggregate["runtime_purity_valid_count"]) == count
+    all_source_clean = all(
+        record["source_clean_before_run"] is True for record in batch_records
+    )
+    one_source_commit = len({record["source_commit"] for record in batch_records}) == 1
     no_forbidden = all(
         int(aggregate[name]) == 0
         for name in ("oracle_fallback_count", "reference_skill_calls", "recovery_calls")
@@ -623,18 +747,24 @@ def run(args: argparse.Namespace) -> None:
     all_reproduced = all(bool(record["reproduced"]) for record in replay_records)
     deterministic = all(bool(record["consistent"]) for record in determinism_records)
     videos_valid = all(bool(record["video"]["valid"]) for record in replay_records)
-    no_infrastructure_failures = not any(
-        case["first_failure_skill"] in {"VISION", "RUNTIME_ERROR"}
-        for case in all_cases
-    )
+    peer_abort_free = int(
+        aggregate["peer_aborted_due_to_other_env_failure"]
+    ) == 0
+    no_global_errors = int(
+        aggregate["outcome_taxonomy"]["GLOBAL_RUNTIME_ERROR"]
+    ) == 0
+    no_runtime_errors = int(aggregate["outcome_taxonomy"]["RUNTIME_ERROR"]) == 0
     infrastructure_pass = all(
         (
             len(all_cases) == count,
             all_strict,
-            all_vision,
             all_pure,
+            all_source_clean,
+            one_source_commit,
             no_forbidden,
-            no_infrastructure_failures,
+            peer_abort_free,
+            no_global_errors,
+            no_runtime_errors,
         )
     )
     ready_for_50 = all(
@@ -657,26 +787,33 @@ def run(args: argparse.Namespace) -> None:
     aggregate["determinism"] = determinism_records
     aggregate["evaluation_infrastructure_pass"] = infrastructure_pass
     aggregate["ready_for_phase4_50"] = ready_for_50
-    write_json(output_root / "phase4_pilot_aggregate.json", aggregate)
+    aggregate["source_clean_before_run"] = all_source_clean
+    aggregate["source_commit_consistent"] = one_source_commit
+    write_json(output_root / "phase4_pilot_v2_aggregate.json", aggregate)
 
     first_result = _read_json(Path(batch_records[0]["result"]))
     provenance = first_result.get("provenance", {})
     source_commit = str(provenance.get("source_commit", "UNKNOWN"))
-    report = _render_report(
+    source_clean_before_run = provenance.get("source_worktree_clean_before_run") is True
+    v1_aggregate = (
+        _read_json(args.v1_aggregate.resolve())
+        if args.v1_aggregate is not None else None
+    )
+    report = _render_v2_report(
         aggregate=aggregate,
         manifest_path=master_path,
         manifest=master,
         batch_size=args.batch_size,
         replays=replay_records,
-        determinism=determinism_records,
         source_commit=source_commit,
-        artifact_lock=provenance.get("artifact_lock"),
+        source_clean_before_run=source_clean_before_run,
         checkpoint_hashes=provenance.get("checkpoint_hashes"),
+        v1_aggregate=v1_aggregate,
         infrastructure_pass=infrastructure_pass,
         ready_for_50=ready_for_50,
     )
-    (output_root / "PHASE4_PILOT_REPORT.md").write_text(report, encoding="utf-8")
-    print(output_root / "PHASE4_PILOT_REPORT.md")
+    (output_root / "PHASE4_PILOT_V2_REPORT.md").write_text(report, encoding="utf-8")
+    print(output_root / "PHASE4_PILOT_V2_REPORT.md")
 
 
 def main() -> None:
@@ -702,10 +839,11 @@ def main() -> None:
     )
     parser.add_argument("--batch-size", type=int, default=4)
     parser.add_argument("--simulator-seed", type=int, default=61081)
+    parser.add_argument("--v1-aggregate", type=Path)
     parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
-    if args.batch_size < 1 or 20 % args.batch_size:
-        parser.error("batch size must be a positive divisor of 20")
+    if args.batch_size != 4:
+        parser.error("Phase 4 Pilot V2 requires batch size 4")
     run(args)
 
 

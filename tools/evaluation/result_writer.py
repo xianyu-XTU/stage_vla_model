@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
+from .outcomes import build_environment_outcomes
+
 if TYPE_CHECKING:
     from .cli import EvaluationPlan
 
@@ -56,6 +58,16 @@ def build_evaluation_result(context: ResultContext) -> dict[str, object]:
                 item["successes"]
             for item in relation_results
         }
+    )
+    environment_outcomes = build_environment_outcomes(
+        num_envs=args.num_envs,
+        relation_results=relation_results,
+        overall_alive=context.overall_alive,
+        vision=context.vision_stats,
+        runtime_purity=context.runtime_purity,
+        pipeline_audit=context.v7_audit,
+        reference_skill_calls=context.reference_skill_calls,
+        recovery_calls=context.recovery_calls,
     )
     result = {
         "status": "passed" if context.passed else "failed",
@@ -123,6 +135,11 @@ def build_evaluation_result(context: ResultContext) -> dict[str, object]:
             "geometry_bias_m": list(args.geometry_bias_m) if args.use_vision else None,
         },
         "episodes": args.num_envs,
+        "environment_outcomes": environment_outcomes,
+        "peer_aborted_due_to_other_env_failure": sum(
+            bool(row["peer_aborted_due_to_other_env_failure"])
+            for row in environment_outcomes
+        ),
         "scene_assets": list(plan.scene_assets),
         "validation_envs": list(context.validation_envs),
         "object_geometry": context.object_geometry,
