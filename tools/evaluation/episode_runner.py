@@ -86,9 +86,10 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
 
     try:
         install_v5_import_blocker()
-    except RuntimeError:
+    except RuntimeError as exc:
         write_json_result(out, {
             "status": "failed",
+            "failure": {"type": type(exc).__name__, "message": str(exc)},
             "v7_chain": {"verified": False, "required": bool(args.require_v7_chain)},
             "runtime_purity": audit_runtime_purity().as_dict(),
             "provenance": collect_evidence_provenance(
@@ -99,8 +100,7 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
         })
         raise
 
-    app = app_launcher_class(args).app
-    raw = env = None
+    app = raw = env = None
     video_recorder = None
     recording_result = None
     vision_stats: dict[str, object] | None = None
@@ -108,6 +108,7 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
     output_module = None
     reach_recovery_module = None
     try:
+        app = app_launcher_class(args).app
         import torch
         from stage_vla_v7.simulation.isaac_lab.known_size_environment import (
             KnownSizeGraspEnvironment,
@@ -631,12 +632,14 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             f"[V7 BENCHMARK] completed {result['chain_successes']}/{len(validation_envs)}",
             flush=True,
         )
-    except VisionDetectionError as exc:
-        assert vision_stats is not None
+    except Exception as exc:
         runtime_purity = audit_runtime_purity().as_dict()
         failure_result = {
             "status": "failed",
-            "failure": exc.as_dict(),
+            "failure": (
+                exc.as_dict() if isinstance(exc, VisionDetectionError)
+                else {"type": type(exc).__name__, "message": str(exc)}
+            ),
             "v7_chain": {
                 "verified": False,
                 "required": bool(args.require_v7_chain),
@@ -654,17 +657,16 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             "recovery_calls": int(
                 getattr(reach_recovery_module, "reference_call_count", 0)
             ),
-            "vision": {
+        }
+        if vision_stats is not None:
+            failure_result["vision"] = {
                 **vision_stats,
                 "seed_valid": (
                     vision_seed_valid.tolist() if vision_seed_valid is not None else None
                 ),
-            },
-        }
+            }
         write_json_result(out, failure_result)
         print(json.dumps(failure_result, indent=2), flush=True)
-        raise
-    except Exception:
         # Isaac's application shutdown can terminate the process before the
         # interpreter prints an unhandled traceback.  Emit it while Kit is
         # still alive so failed physical evaluations remain diagnosable.
@@ -682,4 +684,5 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             env.close()
         elif raw is not None:
             raw.close()
-        app.close()
+        if app is not None:
+            app.close()
