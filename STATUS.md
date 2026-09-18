@@ -1,6 +1,6 @@
 # Stage VLA V7 status
 
-Updated: 2026-09-17
+Updated: 2026-09-18
 
 ## Implemented
 
@@ -28,6 +28,33 @@ Updated: 2026-09-17
 - V7-only evaluation bootstrap, exact V5 module/path runtime auditing, an
   active `stage_vla` import blocker during physical evaluation, and a
   fail-closed runtime-purity condition in `--require_v7_chain`.
+
+## Phase 3 final-integration revalidation
+
+- Verified physical-runtime source commit:
+  `978763dc4af3530b398d821e29a3ec6451610bc0`.
+- Source worktree before the physical smoke: **clean**; source Git status `[]`.
+- Isaac launch and physical-runtime exceptions now emit failed result JSON with
+  the failure reason, source provenance, runtime purity, and observed
+  reference/recovery call counts before being re-raised.
+- Runtime-purity tests: **21 passed**; evaluation tests: **84 passed**; full
+  suite: **292 passed, 0 failed, 0 skipped**.
+- `compileall` passed for `src`, `tests`, `scripts`, and `tools`.
+- Formal V5 Python imports remain **0** in both `src/stage_vla_v7` and
+  `tools/evaluation`; the only V5-root names in the evaluator belong to the
+  purity detector and do not inject a path.
+- All eight locked checkpoints loaded, produced finite 5D actions, and passed
+  exact compatibility.
+- The locked seed-61081 strict Vision + Video smoke passed with 1/1 physical
+  success, 8/8 Skills, 7/7 handoffs, 729 valid Vision calls, zero invalid
+  frames, zero oracle fallback, zero reference/recovery calls, zero loaded V5
+  modules, no exposed vendor path, the import blocker enabled, verified runtime
+  purity, and a verified V7 chain.
+- Independent MP4 decode passed for 767/767 nonblank 640x480 frames at 20 FPS;
+  decoded-pixel SHA-256 is
+  `a4bb10c9c70be426c2f7ed17938395bc08ba6e626eaa2c8eb9c05405520ba5af`.
+- See `PHASE3_CLOSEOUT_FINAL_INTEGRATION_REPORT.md` for the complete acceptance
+  table and evidence locations.
 
 ## Phase 3 clean-HEAD verification
 
