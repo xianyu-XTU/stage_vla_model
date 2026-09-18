@@ -206,6 +206,41 @@ def test_batch_result_contains_independent_environment_outcomes(tmp_path) -> Non
     assert not any(row["peer_aborted_due_to_other_env_failure"] for row in outcomes)
 
 
+def test_vision_failure_overrides_stale_alive_success() -> None:
+    outcomes = build_environment_outcomes(
+        num_envs=1,
+        relation_results=(),
+        overall_alive=torch.tensor([True]),
+        vision={
+            "strict_mode": True,
+            "oracle_fallback_count": 0,
+            "v7_service_calls_by_environment": [3],
+            "per_environment": [{
+                "environment_index": 0,
+                "valid": False,
+                "invalid_frames": 1,
+                "first_invalid_step": 2,
+                "failed_objects": ["cube_1"],
+                "failure_reason": "invalid_required_detection",
+            }],
+        },
+        runtime_purity={
+            "verified": True,
+            "vendor_path_exposed": False,
+            "loaded_v5_module_count": 0,
+            "import_blocker_enabled": True,
+        },
+        pipeline_audit={"all_prepared_skills_exercised": True},
+        reference_skill_calls=0,
+        recovery_calls=0,
+    )
+
+    assert outcomes[0]["outcome"] == "VISION_FAILURE"
+    assert outcomes[0]["first_failure_skill"] == "VISION"
+    assert outcomes[0]["physical_success"] is False
+    assert outcomes[0]["stable_success"] is False
+
+
 def test_global_runtime_error_still_aborts_batch() -> None:
     outcomes = build_global_error_outcomes(4, {"message": "CUDA OOM"})
     assert [row["outcome"] for row in outcomes] == ["GLOBAL_RUNTIME_ERROR"] * 4

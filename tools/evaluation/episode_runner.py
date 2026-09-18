@@ -519,7 +519,11 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
         ))
         relation_results = execution.relation_results
         reset_seen = execution.reset_seen
-        overall_alive = execution.overall_alive
+        overall_alive = execution.overall_alive & torch.as_tensor(
+            vision_seed_valid,
+            dtype=torch.bool,
+            device=execution.overall_alive.device,
+        )
 
         task_evaluation = evaluate_task(
             args=args,
@@ -534,7 +538,11 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
             capture_video_frame=capture_video_frame,
         )
         overall_alive = task_evaluation.overall_alive
-        passed = task_evaluation.passed
+        physical_success = bool(
+            task_evaluation.passed
+            and overall_alive[list(validation_envs)].all()
+        )
+        passed = physical_success
 
         reach_reference_recovery_used = any(
             relation.get("reach_recovery_steps_attempted", 0) > 0
@@ -586,7 +594,7 @@ def run_evaluation(plan: EvaluationPlan, app_launcher_class: Any) -> None:
                 repository_root=V7_ROOT,
                 source_snapshot=source_snapshot,
             ),
-            physical_success=task_evaluation.passed,
+            physical_success=physical_success,
             reference_skill_calls=reference_skill_calls,
             recovery_calls=recovery_calls,
             passed=passed,

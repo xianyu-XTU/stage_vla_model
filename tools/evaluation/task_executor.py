@@ -551,6 +551,7 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
             active_mask = relation_input & torch.as_tensor(
                 reach_result["env_success"], dtype=torch.bool, device=env.device
             )
+            overall_alive = active_mask
             if not reach_result["passed"]:
                 relation_results.append({
                     "asset_roles": {
@@ -679,7 +680,6 @@ def execute_task(context: TaskExecutionContext) -> TaskExecutionResult:
                     for skill, rows in stage_rows.items()
                 },
             })
-            overall_alive = active_mask
             if not bool(overall_alive.any()):
                 break
     return TaskExecutionResult(

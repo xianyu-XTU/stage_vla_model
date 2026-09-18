@@ -95,7 +95,12 @@ def build_environment_outcomes(
             if first_failure is None:
                 first_failure = "FINAL_STABILITY"
 
-        calls = int(service_calls[environment_index]) if environment_index < len(service_calls) else 0
+        successful = alive[environment_index] and vision_valid
+        calls = (
+            int(service_calls[environment_index])
+            if environment_index < len(service_calls)
+            else 0
+        )
         per_env_v7 = bool(
             vision.get("strict_mode") is True
             and vision_valid
@@ -113,8 +118,8 @@ def build_environment_outcomes(
         outcomes.append({
             "environment_index": environment_index,
             "outcome": outcome,
-            "physical_success": alive[environment_index],
-            "stable_success": alive[environment_index],
+            "physical_success": successful,
+            "stable_success": successful,
             "first_failure_skill": first_failure,
             "failure_reason": failure_reason,
             "failure_telemetry": failure_telemetry,
